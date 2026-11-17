@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agilytics
+      POSTGRES_PASSWORD: agilytics
+      POSTGRES_DB: agilytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - agilytics-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agilytics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql://agilytics:agilytics@db:5432/agilytics?schema=public
+      API_PORT: "3001"
+      JWT_SECRET: dev-only-change-me
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["full"]
+
+  web:
+    build: ./apps/web
+    environment:
+      VITE_API_URL: http://localhost:3001/api/v1
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    profiles: ["full"]
+
+  worker:
+    build: ./apps/worker
+    environment:
+      DATABASE_URL: postgresql://agilytics:agilytics@db:5432/agilytics?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["full"]
+
+volumes:
+  agilytics-db:

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/*
+ * Agilytics OS design tokens — locked direction (2026-11-17).
+ * Pin 1 Employee Dashboard shell + Pin 3 DealDeck reporting.
+ * Dark navy sidebar, white canvas, deep-blue primary.
+ * Colour is used only for meaning (status / priority / risk), never decoration.
+ */
+@theme {
+  --color-navy-950: #0b1730;
+  --color-navy-900: #0f1e3a;
+  --color-navy-800: #16294d;
+  --color-navy-700: #1e3a66;
+  --color-primary-600: #1d4ed8;
+  --color-primary-500: #2563eb;
+  --color-primary-100: #dbeafe;
+  --color-canvas: #f6f7f9;
+  --color-panel: #ffffff;
+  --color-line: #e5e7eb;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-done: #16a34a;
+  --color-progress: #2563eb;
+  --color-risk: #dc2626;
+  --color-warn: #d97706;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
