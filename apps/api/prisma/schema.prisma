@@ -1,0 +1,782 @@
+// Prisma schema — Agilytics OS v2.
+// Designed correctly from day one, NOT copied from v1.
+// Rules: every tenant-owned table has tenantId; RLS policies live in the
+// migration (prisma/migrations/20261117000000_init/migration.sql).
+// Feature rework (2026-11-17, approved by Jhon): v1 is NOT a feature
+// reference. See FEATURE-EVALUATION.md. Schema changes from that rework:
+// Project.key/leadId/dates/type; Team.leadId/description/capacity;
+// Ticket.key/type/parentId/labels/customFields + watchers + attachments;
+// TicketLink (dependencies); TimeEntry (time tracking, fed by
+// DailyUpdate.timeSpentMin); BoardColumn.wipLimit; Document linked to a
+// ticket/sprint (Project Docs, not a standalone wiki); Notification
+// (Inbox); ProjectGuest (project-scoped external viewer). Epics/subtasks
+// are Ticket.type + Ticket.parentId — this lands BEFORE the first migration.
+
+enum TicketType {
+  EPIC
+  STORY
+  TASK
+  BUG
+}
+
+enum TicketLinkType {
+  BLOCKS
+  BLOCKED_BY
+  RELATES_TO
+  DUPLICATES
+}
+
+enum ProjectType {
+  SOFTWARE
+  OPS
+  INTERNAL
+}
+
+enum NotificationType {
+  MENTION
+  ASSIGNMENT
+  BLOCKER
+  AUTOMATION
+  SYSTEM
+}
+
+/**
+ * PermissionKey — the fixed permission catalog (locked decision 21,
+ * 2026-11-17, Custom Roles with Custom Permissions).
+ * CHOICE: an enum, NOT a table. Permissions must be known to code — every
+ * key is referenced by a guard/decorator and by the Roles matrix UI — so
+ * a free-text table would let a role claim a permission no code ever
+ * checks. Adding a permission is therefore deliberate: new enum value +
+ * migration + a guard use + a matrix row. The catalog is versioned in
+ * code (packages/shared) and in this schema, never edited from the UI.
+ * Grouped by area; see SYSTEM-DESIGN.md §2.1 for the full list, the
+ * system-role defaults, and the own-vs-any semantics.
+ */
+enum PermissionKey {
+  // Workspace, members, roles, teams
+  WORKSPACE_VIEW_SETTINGS
+  WORKSPACE_EDIT_SETTINGS
+  MEMBERS_INVITE
+  MEMBERS_REMOVE
+  MEMBERS_ASSIGN_ROLE
+  ROLES_MANAGE
+  TEAMS_MANAGE
+  BILLING_VIEW
+  BILLING_MANAGE
+  // Projects
+  PROJECTS_CREATE
+  PROJECTS_EDIT
+  PROJECTS_DELETE
+  PROJECTS_VIEW_ALL
+  // Boards / custom workflows
+  BOARDS_CREATE
+  BOARDS_MANAGE_WORKFLOW
+  // Tickets
+  TICKETS_CREATE
+  TICKETS_VIEW_ALL
+  TICKETS_EDIT_OWN
+  TICKETS_EDIT_ANY
+  TICKETS_DELETE
+  TICKETS_ASSIGN
+  TICKETS_MOVE_STATUS
+  TICKETS_COMMENT
+  TICKETS_ATTACH
+  // Sprints
+  SPRINTS_CREATE
+  SPRINTS_MANAGE
+  // Daily updates
+  DAILY_UPDATES_CREATE_OWN
+  DAILY_UPDATES_VIEW_ALL
+  DAILY_UPDATES_EDIT_ANY
+  // Project Docs
+  DOCS_CREATE
+  DOCS_EDIT_ANY
+  DOCS_DELETE
+  // Reporting
+  REPORTING_VIEW
+  REPORTING_VIEW_ALL
+  REPORTING_EXPORT
+  // Integrations, automations, import
+  INTEGRATIONS_CONNECT
+  INTEGRATIONS_DISCONNECT
+  AUTOMATIONS_MANAGE
+  INTEGRATIONS_IMPORT
+  // AI
+  AI_USE
+  AI_MANAGE_BUDGETS
+  // Time tracking
+  TIME_VIEW_ALL
+}
+// Workflows are CUSTOM (2026-11-17): no fixed status enum. A project has
+// many Boards, each with workspace-admin-defined BoardColumns (free-text
+// name, order, colour, reporting category). Ticket.status references a
+// BoardColumn. DailyUpdate (one per member per ticket per day) is the
+// source for the Today feed, stale-ticket detection and progress trends.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  LEAD
+  MEMBER
+  VIEWER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/**
+ * Reporting category of a board column. The column NAME is free text
+ * (workspace admin's choice); the category is what drives reporting —
+ * velocity, done counts, overdue and stale detection only ever read this.
+ */
+enum ColumnCategory {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum UpdateHealth {
+  ON_TRACK
+  AT_RISK
+  BLOCKED
+}
+
+enum IntegrationProvider {
+  SLACK
+  NOTION
+  GOOGLE_CALENDAR
+  GITHUB
+  ZAPIER
+  WEBHOOK
+}
+
+model Organisation {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  teams       Team[]
+  projects    Project[]
+  roles       Role[]
+  integrations Integration[]
+  automationRules AutomationRule[]
+  auditLogs   AuditLog[]
+
+  @@map("organisations")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  assignedTickets Ticket[] @relation("TicketAssignee")
+  dailyUpdates DailyUpdate[] @relation("DailyUpdateMember")
+  ledProjects Project[] @relation("ProjectLead")
+  ledTeams Team[] @relation("TeamLead")
+  watchedTickets TicketWatcher[]
+  uploadedAttachments TicketAttachment[] @relation("AttachmentUploader")
+  timeEntries TimeEntry[]
+  notifications Notification[]
+  dashboardLayouts DashboardLayout[]
+  projectGuests ProjectGuest[]
+
+  @@map("users")
+}
+
+model Membership {
+  id        String     @id @default(uuid())
+  tenantId  String
+  userId    String
+  /**
+   * Legacy fixed role (decision 21, 2026-11-17). Kept as a fallback during
+   * the migration to custom roles: effective permissions resolve from
+   * `roleId` when set, else from this field via the system-role mapping
+   * (OWNER/ADMIN/LEAD/MEMBER/VIEWER → the seeded system Role of the same
+   * name). New memberships must set `roleId`. The enum field is removed
+   * in a later migration once every membership has a roleId — do not add
+   * new code that reads it.
+   */
+  role      MemberRole @default(MEMBER)
+  /** Custom/system Role for this membership (see Role below). */
+  roleId    String?
+  createdAt DateTime   @default(now())
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleRef      Role?        @relation("MembershipRole", fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, roleId])
+  @@map("memberships")
+}
+
+/**
+ * Role — a workspace role, system or custom (locked decision 21,
+ * 2026-11-17, Custom Roles with Custom Permissions).
+ * A workspace admin (company head, NOT the platform admin) creates,
+ * renames and deletes custom roles and toggles their permissions.
+ * `isSystem` roles (OWNER / ADMIN / LEAD / MEMBER / VIEWER) are seeded
+ * per workspace on workspace creation, with the permission sets in
+ * SYSTEM-DESIGN.md §2.1. System roles can be edited (their permission
+ * toggles) but NOT renamed to a duplicate name, and NOT deleted while
+ * any membership uses them — deleting a role in use is refused (Restrict
+ * on Membership.roleId); reassign those members first. Custom roles can
+ * be deleted freely once no member uses them. A role is tenant-scoped:
+ * the same name in another workspace is a different role. `colour` is
+ * UI-only (role chips in member lists). ProjectGuest is NOT a Role —
+ * it stays a project-scoped external viewer (see ProjectGuest).
+ */
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String
+  /** Free-text name, e.g. "QA Lead", "Client Manager". Unique per tenant. */
+  name        String
+  description String?
+  /** Optional UI colour for role chips, e.g. "#0F3D20". */
+  colour      String?
+  /** True for the five seeded system roles; false for company-created roles. */
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organisation Organisation   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships  Membership[]   @relation("MembershipRole")
+  permissions  RolePermission[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isSystem])
+  @@map("roles")
+}
+
+/**
+ * RolePermission — one permission key granted to one role. The join is
+ * the only place a role's permissions live; there is no permission list
+ * stored on Role itself. Revoking = deleting the row. The permission
+ * catalog itself is the PermissionKey enum (fixed, code-known).
+ */
+model RolePermission {
+  roleId        String
+  permissionKey PermissionKey
+  grantedAt     DateTime @default(now())
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+  @@index([permissionKey])
+  @@map("role_permissions")
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  /** Lead of the team (workspace member). Persistent org unit, not a bootcamp group. */
+  leadId      String?
+  /** Planned capacity (e.g. story points per sprint) — optional. */
+  capacity    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organisation Organisation  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead         User?          @relation("TeamLead", fields: [leadId], references: [id], onDelete: SetNull)
+  projects     TeamProject[]
+  members      TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  teamId String
+  userId String
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@map("team_members")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  tenantId    String
+  /** Short human key, e.g. ENG — ticket IDs are KEY-123. Unique per tenant. */
+  key         String
+  name        String
+  description String?
+  /** Project lead (workspace member). */
+  leadId      String?
+  startDate   DateTime?
+  targetDate  DateTime?
+  type        ProjectType   @default(SOFTWARE)
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  organisation Organisation  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead         User?          @relation("ProjectLead", fields: [leadId], references: [id], onDelete: SetNull)
+  teams        TeamProject[]
+  sprints      Sprint[]
+  boards       Board[]
+  tickets      Ticket[]
+  documents    Document[]
+  guests       ProjectGuest[]
+
+  @@unique([tenantId, key])
+  @@map("projects")
+}
+
+/**
+ * ProjectGuest — external viewer (e.g. a client stakeholder), read-only
+ * on ONE project. Project-scoped, not a workspace role (see
+ * FEATURE-EVALUATION.md #13).
+ */
+model ProjectGuest {
+  id        String   @id @default(uuid())
+  tenantId  String
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_guests")
+}
+
+model TeamProject {
+  teamId    String
+  projectId String
+
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, projectId])
+  @@map("team_projects")
+}
+
+model Sprint {
+  id        String       @id @default(uuid())
+  tenantId  String
+  projectId String
+  name      String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime
+  status    SprintStatus @default(PLANNED)
+  /** Planned capacity in story points for the sprint. */
+  capacity  Int?
+  /** Retrospective notes for the sprint. */
+  retrospective String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+  documents Document[]
+
+  @@map("sprints")
+}
+
+/**
+ * Board — a project has MANY boards (e.g. Engineering, Design, Ops).
+ * Created with the default template on project creation; a workspace
+ * admin can add, rename and remove boards without restriction.
+ */
+model Board {
+  id          String   @id @default(uuid())
+  tenantId    String
+  projectId   String
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns BoardColumn[]
+  tickets Ticket[]
+
+  @@index([tenantId, projectId])
+  @@map("boards")
+}
+
+/**
+ * BoardColumn — one status on one board. Name is free text with no
+ * restrictions (workspace admin defined); order and colour are the
+ * admin's choice; category is the reporting bucket (TODO / IN_PROGRESS
+ * / DONE). There is deliberately no fixed status enum in v2.
+ */
+model BoardColumn {
+  id        String         @id @default(uuid())
+  tenantId  String
+  boardId   String
+  name      String
+  order     Int            @default(0)
+  colour    String         @default("#64748B")
+  category  ColumnCategory @default(TODO)
+  /** Optional WIP limit for the column (Kanban) — null = no limit. */
+  wipLimit  Int?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  board       Board                 @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]              @relation("TicketStatus")
+  historyFrom TicketStatusHistory[] @relation("HistoryFrom")
+  historyTo   TicketStatusHistory[] @relation("HistoryTo")
+
+  @@index([tenantId, boardId])
+  @@map("board_columns")
+}
+
+/**
+ * DailyUpdate — one per member per ticket per day (upsert on
+ * [ticketId, memberId, date]). Comments cannot show a task's current
+ * state or track a person; this is the record that does. The Today feed,
+ * stale-ticket detection, blocker lists and progress/velocity trends all
+ * derive from daily updates + status history, never from comments.
+ */
+model DailyUpdate {
+  id              String       @id @default(uuid())
+  tenantId        String
+  ticketId        String
+  memberId        String
+  /** Calendar day (UTC) the update is for — one row per member/ticket/day. */
+  date            DateTime     @db.Date
+  doneToday       String
+  next            String?
+  blockers        String?
+  hasBlocker      Boolean      @default(false)
+  progressPercent Int?
+  health          UpdateHealth @default(ON_TRACK)
+  timeSpentMin    Int?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  member User   @relation("DailyUpdateMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, memberId, date])
+  @@index([tenantId, date])
+  @@index([ticketId, date])
+  @@map("daily_updates")
+}
+
+model Ticket {
+  id          String         @id @default(uuid())
+  tenantId    String
+  projectId   String
+  sprintId    String?
+  boardId     String?
+  statusId    String?
+  /** Human identifier, e.g. ENG-123 (project key + per-project number). */
+  key         String
+  type        TicketType     @default(TASK)
+  /** Parent ticket — subtask → parent story, story → epic. Self-relation. */
+  parentId    String?
+  title       String
+  description String?
+  priority    TicketPriority @default(MEDIUM)
+  estimate    Int?
+  assigneeId  String?
+  dueDate     DateTime?
+  labels      String[]       @default([])
+  /** Per-project custom fields (JSON; field definitions live per project). */
+  customFields Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint   Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  board    Board?       @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  status   BoardColumn? @relation("TicketStatus", fields: [statusId], references: [id], onDelete: SetNull)
+  assignee User?        @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  parent   Ticket?      @relation("TicketParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children Ticket[]     @relation("TicketParent")
+  history  TicketStatusHistory[]
+  comments Comment[]
+  dailyUpdates DailyUpdate[]
+  watchers TicketWatcher[]
+  attachments TicketAttachment[]
+  timeEntries TimeEntry[]
+  documents Document[]
+  linksFrom TicketLink[] @relation("LinkFrom")
+  linksTo   TicketLink[] @relation("LinkTo")
+
+  @@unique([projectId, key])
+  @@index([tenantId, projectId])
+  @@index([tenantId, statusId])
+  @@index([parentId])
+  @@map("tickets")
+}
+
+/** Users watching a ticket (notified on changes). */
+model TicketWatcher {
+  ticketId String
+  userId   String
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@map("ticket_watchers")
+}
+
+/** File attached to a ticket (S3), not to a wiki page. */
+model TicketAttachment {
+  id           String   @id @default(uuid())
+  tenantId     String
+  ticketId     String
+  fileName     String
+  s3Key        String
+  sizeBytes    Int?
+  mimeType     String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, ticketId])
+  @@map("ticket_attachments")
+}
+
+/**
+ * TicketLink — dependency / relation between two tickets. BLOCKS means
+ * fromTicket blocks toTicket. This is what makes a blocker actionable.
+ */
+model TicketLink {
+  id           String         @id @default(uuid())
+  tenantId     String
+  fromTicketId String
+  toTicketId   String
+  type         TicketLinkType @default(RELATES_TO)
+  createdAt    DateTime       @default(now())
+
+  fromTicket Ticket @relation("LinkFrom", fields: [fromTicketId], references: [id], onDelete: Cascade)
+  toTicket   Ticket @relation("LinkTo", fields: [toTicketId], references: [id], onDelete: Cascade)
+
+  @@unique([fromTicketId, toTicketId, type])
+  @@index([tenantId, fromTicketId])
+  @@index([tenantId, toTicketId])
+  @@map("ticket_links")
+}
+
+/**
+ * TimeEntry — lightweight time log. DailyUpdate.timeSpentMin writes to
+ * this table (one source, not two). Summed per ticket / sprint / project.
+ * No invoicing — that is a billing feature, not a PM feature.
+ */
+model TimeEntry {
+  id        String   @id @default(uuid())
+  tenantId  String
+  ticketId  String
+  memberId  String
+  date      DateTime @db.Date
+  minutes   Int
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  member User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, ticketId])
+  @@index([tenantId, memberId, date])
+  @@map("time_entries")
+}
+
+/**
+ * Notification — one row per user event for the Notification Inbox
+ * (mention / assignment / blocker / automation). Read/unread, filterable.
+ */
+model Notification {
+  id        String           @id @default(uuid())
+  tenantId  String
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  entity    String?
+  entityId  String?
+  title     String
+  body      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+/**
+ * DashboardLayout — one user's saved dashboard layout.
+ * Per USER, not per workspace: the company's workflow stays shared,
+ * the view is personal. layout JSON: { widgets: [{ id, type,
+ * x, y, w, h, config: { stats, projectId?, sprintId?, teamId?,
+ * timeRange } }], ui: { density, sidebarCollapsed, navItems } }.
+ * The Agibankz theme is fixed and is NOT in the layout — no
+ * user-chosen colours/skins. Role templates (MANAGER / LEAD /
+ * DEVELOPER / VIEWER) seed a new user's first layout only.
+ */
+model DashboardLayout {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  name      String
+  layout    Json
+  isDefault Boolean  @default(false)
+  template  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId, name])
+  @@index([tenantId, userId])
+  @@map("dashboard_layouts")
+}
+
+model TicketStatusHistory {
+  id           String   @id @default(uuid())
+  tenantId     String
+  ticketId     String
+  fromStatusId String?
+  toStatusId   String
+  /** Who moved it — needed for per-person tracking with custom statuses. */
+  changedById  String?
+  note         String?
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromStatus BoardColumn? @relation("HistoryFrom", fields: [fromStatusId], references: [id], onDelete: SetNull)
+  toStatus   BoardColumn  @relation("HistoryTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_status_history")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  tenantId  String
+  ticketId  String
+  authorId  String
+  body      String
+  /** @mentions are parsed from body; mentioned users are notified. */
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+/**
+ * Document — Project Docs, NOT a standalone wiki (feature rework
+ * 2026-11-17). A document lives under a project (or a ticket / sprint)
+ * with a PM template (PRD, spec, sprint plan, retro). There is no global
+ * docs library and no separate docs homepage. Teams that live in Notion
+ * use the Notion integration instead of a second Notion.
+ */
+model Document {
+  id        String   @id @default(uuid())
+  tenantId  String
+  projectId String?
+  ticketId  String?
+  sprintId  String?
+  /** PM template: PRD | SPEC | SPRINT_PLAN | RETRO | NOTE (free text). */
+  template  String?
+  title     String
+  content   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  ticket  Ticket?  @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  sprint  Sprint?  @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+
+  @@map("documents")
+}
+
+model Integration {
+  id         String              @id @default(uuid())
+  tenantId   String
+  provider   IntegrationProvider
+  /** OAuth tokens are encrypted at rest (KMS) — never store plaintext. */
+  encryptedCredentials String
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider])
+  @@map("integrations")
+}
+
+model AutomationRule {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  trigger   String // e.g. "ticket.overdue"
+  action    String // e.g. "slack.post"
+  config    Json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("automation_rules")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
