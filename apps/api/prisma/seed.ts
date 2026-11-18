@@ -1,3 +1,7 @@
+// Must be first: ts-node does not load .env on its own, so without this
+// process.env.DATABASE_URL is undefined and PrismaPg defaults to
+// localhost:5432 -> ECONNREFUSED, no matter what is in apps/api/.env.
+import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
