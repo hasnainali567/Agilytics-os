@@ -12,9 +12,12 @@ import { BoardsModule } from "./modules/boards/boards.module";
 import { DailyUpdatesModule } from "./modules/daily-updates/daily-updates.module";
 import { DocsModule } from "./modules/docs/docs.module";
 import { IdentityModule } from "./modules/identity/identity.module";
+import { RolesModule } from "./modules/identity/roles/roles.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
 import { ReportingModule } from "./modules/reporting/reporting.module";
+import { DashboardLayoutsModule } from "./modules/reporting/dashboard-layouts/dashboard-layouts.module";
 import { SprintsModule } from "./modules/sprints/sprints.module";
 import { TeamsModule } from "./modules/teams/teams.module";
 import { TicketsModule } from "./modules/tickets/tickets.module";
@@ -37,9 +40,12 @@ import { RealtimeModule } from "./modules/realtime/realtime.module";
     DocsModule,
     IdentityModule,
     IntegrationsModule,
+    NotificationsModule,
     ProjectsModule,
     RealtimeModule,
     ReportingModule,
+    DashboardLayoutsModule,
+    RolesModule,
     SprintsModule,
     TeamsModule,
     TicketsModule,

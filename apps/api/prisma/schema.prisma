@@ -190,6 +190,7 @@ model Organisation {
   integrations Integration[]
   automationRules AutomationRule[]
   auditLogs   AuditLog[]
+  dashboardLayouts DashboardLayout[]
 
   @@map("organisations")
 }

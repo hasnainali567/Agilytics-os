@@ -41,22 +41,22 @@
 
 ## 2. Bounded contexts (NestJS modules)
 
-| Module          | Owns                                                               | Routes                                                                                           |
-| --------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `identity`      | Users, organisations, memberships, **custom roles + permissions** (Role, PermissionKey catalog, RolePermission join; PermissionsGuard) | `GET /identity/me`, `GET/POST /roles`, `PATCH/DELETE /roles/:id`, `PUT /roles/:id/permissions`, `GET /permissions` |
-| `projects`      | Projects: key, lead, dates, type (software / ops / internal)    | `GET/POST /projects`                                                                             |
-| `boards`        | Custom workflows: boards + admin-defined columns, optional WIP limit | `GET/POST /boards`, `POST/PATCH/DELETE /boards/:id/columns` (workspace OWNER/ADMIN only)         |
-| `sprints`       | Sprints (dates + goal), Backlog, capacity, burndown, carry-over | `GET/POST /sprints`                                                                              |
-| `tickets`       | Tickets: key, type (EPIC/STORY/TASK/BUG), parent (epic/subtask), labels, custom fields, watchers, attachments, links, status history, comments | `GET/POST /tickets`, `PATCH /tickets/:id/status` (column id, history who/when/from/to), List + Board views, bulk edit |
-| `time-tracking` | Time entries (fed by DailyUpdate `timeSpentMin`), per ticket/sprint/project totals | `GET/POST /tickets/:id/time-entries` (Phase 2) |
-| `daily-updates` | Daily updates (per ticket/member/day), Today feed, My Work, blockers | `POST/GET /tickets/:id/daily-updates`, `GET /daily-updates/today`, `GET /daily-updates/blockers`, `GET /daily-updates/my-work` |
-| `teams`         | Teams: persistent org units with lead, description, capacity     | `GET/POST /teams`                                                                                |
-| `docs`          | Project Docs (not a wiki): docs under a project/ticket/sprint, PM templates | `GET/POST /documents`, `POST /documents/:id/upload-url`                                          |
-| `reporting`     | Dashboard KPIs, velocity, CFD, cycle time, time-in-status, burndown, workload, My Work, generated weekly reports (no decks); **dashboard layouts** (per-user customisable dashboard, see §10 / `docs/FRONTEND.md` §1B) | `GET /reporting/dashboard-summary`, `GET /reporting/weekly`, `GET/PUT /dashboard/layout`, `POST /dashboard/layout/reset` |
-| `integrations`  | Connections, OAuth tokens (KMS), automations, Jira/ClickUp import (Phase 1) | `GET /integrations`, `POST /integrations/:provider/connect`, `POST /integrations/:provider/webhook`, `POST /integrations/import` |
-| `realtime`      | Notification Inbox (Phase 1); notification stream stub; WebSocket gateway (Phase 2) | `GET /notifications`, `GET /notifications/stream` (501 stub) |
-| `ai`            | LangChain agent (read-only tools, memory), RAG, ask-your-workspace; paid/no-retention provider for real pilot data, free tiers dev/demo only | `POST /ai/ask`, `GET /ai/status` (503 `ai_not_configured` with no key) — see `docs/AI.md`        |
-| `admin`         | Platform admin: tenants, users, audit log, health                  | `GET /admin/*` (PLATFORM_ADMIN only)                                                             |
+| Module          | Owns                                                                                                                                                                                                                   | Routes                                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `identity`      | Users, organisations, memberships, **custom roles + permissions** (Role, PermissionKey catalog, RolePermission join; PermissionsGuard)                                                                                 | `GET /identity/me`, `GET/POST /roles`, `PATCH/DELETE /roles/:id`, `PUT /roles/:id/permissions`, `GET /permissions`               |
+| `projects`      | Projects: key, lead, dates, type (software / ops / internal)                                                                                                                                                           | `GET/POST /projects`                                                                                                             |
+| `boards`        | Custom workflows: boards + admin-defined columns, optional WIP limit                                                                                                                                                   | `GET/POST /boards`, `POST/PATCH/DELETE /boards/:id/columns` (workspace OWNER/ADMIN only)                                         |
+| `sprints`       | Sprints (dates + goal), Backlog, capacity, burndown, carry-over                                                                                                                                                        | `GET/POST /sprints`                                                                                                              |
+| `tickets`       | Tickets: key, type (EPIC/STORY/TASK/BUG), parent (epic/subtask), labels, custom fields, watchers, attachments, links, status history, comments                                                                         | `GET/POST /tickets`, `PATCH /tickets/:id/status` (column id, history who/when/from/to), List + Board views, bulk edit            |
+| `time-tracking` | Time entries (fed by DailyUpdate `timeSpentMin`), per ticket/sprint/project totals                                                                                                                                     | `GET/POST /tickets/:id/time-entries` (Phase 2)                                                                                   |
+| `daily-updates` | Daily updates (per ticket/member/day), Today feed, My Work, blockers                                                                                                                                                   | `POST/GET /tickets/:id/daily-updates`, `GET /daily-updates/today`, `GET /daily-updates/blockers`, `GET /daily-updates/my-work`   |
+| `teams`         | Teams: persistent org units with lead, description, capacity                                                                                                                                                           | `GET/POST /teams`                                                                                                                |
+| `docs`          | Project Docs (not a wiki): docs under a project/ticket/sprint, PM templates                                                                                                                                            | `GET/POST /documents`, `POST /documents/:id/upload-url`                                                                          |
+| `reporting`     | Dashboard KPIs, velocity, CFD, cycle time, time-in-status, burndown, workload, My Work, generated weekly reports (no decks); **dashboard layouts** (per-user customisable dashboard, see §10 / `docs/FRONTEND.md` §1B) | `GET /reporting/dashboard-summary`, `GET /reporting/weekly`, `GET/PUT /dashboard/layout`, `POST /dashboard/layout/reset`         |
+| `integrations`  | Connections, OAuth tokens (KMS), automations, Jira/ClickUp import (Phase 1)                                                                                                                                            | `GET /integrations`, `POST /integrations/:provider/connect`, `POST /integrations/:provider/webhook`, `POST /integrations/import` |
+| `realtime`      | Notification Inbox (Phase 1); notification stream stub; WebSocket gateway (Phase 2)                                                                                                                                    | `GET /notifications`, `GET /notifications/stream` (501 stub)                                                                     |
+| `ai`            | LangChain agent (read-only tools, memory), RAG, ask-your-workspace; paid/no-retention provider for real pilot data, free tiers dev/demo only                                                                           | `POST /ai/ask`, `GET /ai/status` (503 `ai_not_configured` with no key) — see `docs/AI.md`                                        |
+| `admin`         | Platform admin: tenants, users, audit log, health                                                                                                                                                                      | `GET /admin/*` (PLATFORM_ADMIN only)                                                                                             |
 
 Cross-cutting: `auth` (Cognito JWT guard), `prisma` (PrismaService + RLS
 session tenant), `health`. Shared contracts: `packages/shared` (Zod +
@@ -349,17 +349,17 @@ queues**, not from running many services on day one:
 
 ## 17. What we are NOT adding yet — and why
 
-| Not adding                         | Why                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Microservices / EKS / service mesh | One team, one product. A modular monolith deploys faster, debugs faster, and costs far less. Extract later, per §16. |
-| Kafka / RabbitMQ / Redis broker    | SQS covers async jobs. Add a broker only when ordering / streaming semantics are actually needed.                   |
+| Not adding                         | Why                                                                                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Microservices / EKS / service mesh | One team, one product. A modular monolith deploys faster, debugs faster, and costs far less. Extract later, per §16.      |
+| Kafka / RabbitMQ / Redis broker    | SQS covers async jobs. Add a broker only when ordering / streaming semantics are actually needed.                         |
 | ElastiCache / Redis                | No cache is needed until read load proves it. Needed for Phase 2 realtime fan-out — add it then, behind the gateway only. |
-| GraphQL                            | REST + versioned `/api/v1` + OpenAPI is enough for one client (our web app) and for integrations.                   |
-| Multi-region / active-active       | One region (ap-south-1) until a customer contract requires more.                                                    |
-| Separate marketing site / SSR      | Internal tool, behind login. The web app is a Vite SPA on Vercel.                                                   |
-| Slide-deck builder / Decks product | Not a PM feature; v1 dead code. Weekly reports are generated reports (email / Slack / PDF), not decks.               |
-| Standalone Doc Hub wiki            | Notion-clone shape. Docs are Project Docs attached to work; Notion via integration.                                 |
-| Home as a social feed              | Bootcamp shape. Home is Today / My Work first.                                                                      |
+| GraphQL                            | REST + versioned `/api/v1` + OpenAPI is enough for one client (our web app) and for integrations.                         |
+| Multi-region / active-active       | One region (ap-south-1) until a customer contract requires more.                                                          |
+| Separate marketing site / SSR      | Internal tool, behind login. The web app is a Vite SPA on Vercel.                                                         |
+| Slide-deck builder / Decks product | Not a PM feature; v1 dead code. Weekly reports are generated reports (email / Slack / PDF), not decks.                    |
+| Standalone Doc Hub wiki            | Notion-clone shape. Docs are Project Docs attached to work; Notion via integration.                                       |
+| Home as a social feed              | Bootcamp shape. Home is Today / My Work first.                                                                            |
 
 ## 18. Repo map
 

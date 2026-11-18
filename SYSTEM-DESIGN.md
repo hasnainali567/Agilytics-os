@@ -80,19 +80,19 @@ so a free-text table could grant a permission no code ever checks).
 Adding a permission is a code change: new enum value + migration +
 guard use + matrix row. Keys are grouped by area:
 
-| Area | Permission keys |
-|---|---|
-| Workspace, members, roles, teams | `workspace.view_settings`, `workspace.edit_settings`, `members.invite`, `members.remove`, `members.assign_role`, `roles.manage`, `teams.manage`, `billing.view`, `billing.manage` |
-| Projects | `projects.create`, `projects.edit`, `projects.delete`, `projects.view_all` |
-| Boards / workflows | `boards.create`, `boards.manage_workflow` |
-| Tickets | `tickets.create`, `tickets.view_all`, `tickets.edit_own`, `tickets.edit_any`, `tickets.delete`, `tickets.assign`, `tickets.move_status`, `tickets.comment`, `tickets.attach` |
-| Sprints | `sprints.create`, `sprints.manage` |
-| Daily updates | `daily_updates.create_own`, `daily_updates.view_all`, `daily_updates.edit_any` |
-| Project Docs | `docs.create`, `docs.edit_any`, `docs.delete` |
-| Reporting | `reporting.view`, `reporting.view_all`, `reporting.export` |
-| Integrations, automations, import | `integrations.connect`, `integrations.disconnect`, `automations.manage`, `integrations.import` |
-| AI | `ai.use`, `ai.manage_budgets` |
-| Time tracking | `time.view_all` |
+| Area                              | Permission keys                                                                                                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace, members, roles, teams  | `workspace.view_settings`, `workspace.edit_settings`, `members.invite`, `members.remove`, `members.assign_role`, `roles.manage`, `teams.manage`, `billing.view`, `billing.manage` |
+| Projects                          | `projects.create`, `projects.edit`, `projects.delete`, `projects.view_all`                                                                                                        |
+| Boards / workflows                | `boards.create`, `boards.manage_workflow`                                                                                                                                         |
+| Tickets                           | `tickets.create`, `tickets.view_all`, `tickets.edit_own`, `tickets.edit_any`, `tickets.delete`, `tickets.assign`, `tickets.move_status`, `tickets.comment`, `tickets.attach`      |
+| Sprints                           | `sprints.create`, `sprints.manage`                                                                                                                                                |
+| Daily updates                     | `daily_updates.create_own`, `daily_updates.view_all`, `daily_updates.edit_any`                                                                                                    |
+| Project Docs                      | `docs.create`, `docs.edit_any`, `docs.delete`                                                                                                                                     |
+| Reporting                         | `reporting.view`, `reporting.view_all`, `reporting.export`                                                                                                                        |
+| Integrations, automations, import | `integrations.connect`, `integrations.disconnect`, `automations.manage`, `integrations.import`                                                                                    |
+| AI                                | `ai.use`, `ai.manage_budgets`                                                                                                                                                     |
+| Time tracking                     | `time.view_all`                                                                                                                                                                   |
 
 **Own vs any.** `*_edit_own` / `*_create_own` mean the member's own
 work (a ticket they are assigned to or authored, their own daily
@@ -362,35 +362,36 @@ members first.
 
 Postgres (RDS) + `pgvector` (AI RAG). Every tenant-owned table has
 `tenantId` and RLS enabled. Full DDL: `apps/api/prisma/schema.prisma`
-+ `apps/api/prisma/migrations/20261117000000_init/migration.sql`.
 
-| Table | Key columns | Key relations |
-|---|---|---|
-| `organisations` | `name`, `slug` | tenant root |
-| `users` | `email`, `name` | — |
-| `memberships` | `tenantId`, `userId`, `role` (legacy fallback), `roleId?` | unique (`tenantId`, `userId`) → `Role` (`roleId`, Restrict on delete); effective permissions from `Role` when set, else legacy role mapping |
-| `roles` | `tenantId`, `name`, `description?`, `colour?`, `isSystem` | tenant root for roles; unique (`tenantId`, `name`); system roles seeded per workspace |
-| `role_permissions` | `roleId`, `permissionKey` (`PermissionKey` enum) | join — a grant is a row; `@@id([roleId, permissionKey])` |
-| `teams` / `team_members` / `team_projects` | `tenantId`, `name`, `leadId`, `description`, `capacity` | team ↔ user, team ↔ project |
-| `projects` | `tenantId`, `key`, `name`, `leadId`, `startDate`, `targetDate`, `type`, `status` | → organisation; unique (`tenantId`, `key`) |
-| `project_guests` | `tenantId`, `projectId`, `userId` | project-scoped external viewer; unique (`projectId`, `userId`) |
-| `boards` | `tenantId`, `projectId`, `name`, `isDefault` | → project |
-| `board_columns` | `boardId`, `name`, `order`, `colour`, `category`, `wipLimit?` | → board |
-| `sprints` | `projectId`, `name`, `goal`, `startDate`, `endDate`, `status`, `capacity?`, `retrospective?` | → project |
-| `tickets` | `projectId`, `sprintId?`, `boardId?`, `statusId?`, `key`, `type`, `parentId?`, `title`, `priority`, `estimate`, `assigneeId?`, `dueDate?`, `labels`, `customFields?` | → project, sprint, board, column, user, parent; unique (`projectId`, `key`) |
-| `ticket_watchers` | `ticketId`, `userId` | → ticket, user |
-| `ticket_attachments` | `ticketId`, `fileName`, `s3Key`, `uploadedById` | → ticket (S3 file on the ticket) |
-| `ticket_links` | `fromTicketId`, `toTicketId`, `type` (BLOCKS / BLOCKED_BY / RELATES_TO / DUPLICATES) | → tickets |
-| `time_entries` | `ticketId`, `memberId`, `date`, `minutes`, `note?` | → ticket, user; fed by DailyUpdate `timeSpentMin` |
-| `notifications` | `userId`, `type`, `entity?`, `entityId?`, `title`, `isRead` | Notification Inbox |
-| `ticket_status_history` | `ticketId`, `fromStatusId?`, `toStatusId`, `changedById?`, `createdAt` | → ticket, columns |
-| `daily_updates` | `ticketId`, `memberId`, `date`, `doneToday`, `next`, `blockers`, `hasBlocker`, `progressPercent`, `health`, `timeSpentMin` | unique (`ticketId`, `memberId`, `date`) |
-| `dashboard_layouts` | `userId`, `tenantId`, `name`, `layout` (JSON: widgets + `ui` block), `isDefault`, `template?` (MANAGER / LEAD / DEVELOPER / VIEWER) | → user, organisation; unique (`userId`, `tenantId`, `name`) — per-user custom dashboard, tenant-scoped, RLS |
-| `comments` | `ticketId`, `authorId`, `body` | → ticket; @mentions notify |
-| `documents` | `projectId?`, `ticketId?`, `sprintId?`, `template?`, `title`, `content` | Project Docs, not a wiki → project / ticket / sprint |
-| `integrations` | `tenantId`, `provider`, `encryptedCredentials`, `isActive` | unique (`tenantId`, `provider`) |
-| `automation_rules` | `tenantId`, `name`, `trigger`, `action`, `config`, `isActive` | — |
-| `audit_logs` | `tenantId`, `userId?`, `action`, `entity`, `entityId?`, `metadata` | append-only |
+- `apps/api/prisma/migrations/20261117000000_init/migration.sql`.
+
+| Table                                      | Key columns                                                                                                                                                          | Key relations                                                                                                                               |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `organisations`                            | `name`, `slug`                                                                                                                                                       | tenant root                                                                                                                                 |
+| `users`                                    | `email`, `name`                                                                                                                                                      | —                                                                                                                                           |
+| `memberships`                              | `tenantId`, `userId`, `role` (legacy fallback), `roleId?`                                                                                                            | unique (`tenantId`, `userId`) → `Role` (`roleId`, Restrict on delete); effective permissions from `Role` when set, else legacy role mapping |
+| `roles`                                    | `tenantId`, `name`, `description?`, `colour?`, `isSystem`                                                                                                            | tenant root for roles; unique (`tenantId`, `name`); system roles seeded per workspace                                                       |
+| `role_permissions`                         | `roleId`, `permissionKey` (`PermissionKey` enum)                                                                                                                     | join — a grant is a row; `@@id([roleId, permissionKey])`                                                                                    |
+| `teams` / `team_members` / `team_projects` | `tenantId`, `name`, `leadId`, `description`, `capacity`                                                                                                              | team ↔ user, team ↔ project                                                                                                                 |
+| `projects`                                 | `tenantId`, `key`, `name`, `leadId`, `startDate`, `targetDate`, `type`, `status`                                                                                     | → organisation; unique (`tenantId`, `key`)                                                                                                  |
+| `project_guests`                           | `tenantId`, `projectId`, `userId`                                                                                                                                    | project-scoped external viewer; unique (`projectId`, `userId`)                                                                              |
+| `boards`                                   | `tenantId`, `projectId`, `name`, `isDefault`                                                                                                                         | → project                                                                                                                                   |
+| `board_columns`                            | `boardId`, `name`, `order`, `colour`, `category`, `wipLimit?`                                                                                                        | → board                                                                                                                                     |
+| `sprints`                                  | `projectId`, `name`, `goal`, `startDate`, `endDate`, `status`, `capacity?`, `retrospective?`                                                                         | → project                                                                                                                                   |
+| `tickets`                                  | `projectId`, `sprintId?`, `boardId?`, `statusId?`, `key`, `type`, `parentId?`, `title`, `priority`, `estimate`, `assigneeId?`, `dueDate?`, `labels`, `customFields?` | → project, sprint, board, column, user, parent; unique (`projectId`, `key`)                                                                 |
+| `ticket_watchers`                          | `ticketId`, `userId`                                                                                                                                                 | → ticket, user                                                                                                                              |
+| `ticket_attachments`                       | `ticketId`, `fileName`, `s3Key`, `uploadedById`                                                                                                                      | → ticket (S3 file on the ticket)                                                                                                            |
+| `ticket_links`                             | `fromTicketId`, `toTicketId`, `type` (BLOCKS / BLOCKED_BY / RELATES_TO / DUPLICATES)                                                                                 | → tickets                                                                                                                                   |
+| `time_entries`                             | `ticketId`, `memberId`, `date`, `minutes`, `note?`                                                                                                                   | → ticket, user; fed by DailyUpdate `timeSpentMin`                                                                                           |
+| `notifications`                            | `userId`, `type`, `entity?`, `entityId?`, `title`, `isRead`                                                                                                          | Notification Inbox                                                                                                                          |
+| `ticket_status_history`                    | `ticketId`, `fromStatusId?`, `toStatusId`, `changedById?`, `createdAt`                                                                                               | → ticket, columns                                                                                                                           |
+| `daily_updates`                            | `ticketId`, `memberId`, `date`, `doneToday`, `next`, `blockers`, `hasBlocker`, `progressPercent`, `health`, `timeSpentMin`                                           | unique (`ticketId`, `memberId`, `date`)                                                                                                     |
+| `dashboard_layouts`                        | `userId`, `tenantId`, `name`, `layout` (JSON: widgets + `ui` block), `isDefault`, `template?` (MANAGER / LEAD / DEVELOPER / VIEWER)                                  | → user, organisation; unique (`userId`, `tenantId`, `name`) — per-user custom dashboard, tenant-scoped, RLS                                 |
+| `comments`                                 | `ticketId`, `authorId`, `body`                                                                                                                                       | → ticket; @mentions notify                                                                                                                  |
+| `documents`                                | `projectId?`, `ticketId?`, `sprintId?`, `template?`, `title`, `content`                                                                                              | Project Docs, not a wiki → project / ticket / sprint                                                                                        |
+| `integrations`                             | `tenantId`, `provider`, `encryptedCredentials`, `isActive`                                                                                                           | unique (`tenantId`, `provider`)                                                                                                             |
+| `automation_rules`                         | `tenantId`, `name`, `trigger`, `action`, `config`, `isActive`                                                                                                        | —                                                                                                                                           |
+| `audit_logs`                               | `tenantId`, `userId?`, `action`, `entity`, `entityId?`, `metadata`                                                                                                   | append-only                                                                                                                                 |
 
 ```mermaid
 erDiagram
@@ -429,27 +430,27 @@ erDiagram
 Versioned REST, Zod validation via `@agilytics/shared`, JWT guard
 (Cognito), OpenAPI via Swagger. Base: `/api/v1`.
 
-| Module | Endpoints |
-|---|---|
-| `health` | `GET /health` |
-| `auth` | `POST /auth/dev-login` (dev only — disabled in production) |
-| `identity` | `GET /identity/me` (includes the caller's effective permission set for the tenant) |
-| `roles` | `GET /roles`, `POST /roles` (workspace admin, `roles.manage`), `PATCH /roles/:id`, `DELETE /roles/:id` (refused if members use it), `PUT /roles/:id/permissions` (replace the role's permission set), `GET /permissions` (the fixed `PermissionKey` catalog, grouped by area) |
-| `projects` | `GET /projects`, `POST /projects` (creates default board; body: `key`, `leadId`, `startDate`, `targetDate`, `type`) |
-| `boards` | `GET /boards?projectId=`, `GET /boards/:id`, `POST /boards`, `POST /boards/:id/columns`, `PATCH /boards/:boardId/columns/:columnId`, `DELETE /boards/:boardId/columns/:columnId`, `DELETE /boards/:id` |
-| `sprints` | `GET /sprints`, `POST /sprints`, `GET /sprints/backlog?projectId=` (un-sprinted tickets), `POST /sprints/:id/carry-over` |
-| `tickets` | `GET /tickets?projectId=` (List + Board views, filters), `POST /tickets`, `PATCH /tickets/:id/status`, `POST /tickets/:id/attachments`, `GET /tickets/:id/activity`, `POST /tickets/bulk` (bulk edit) |
-| `ticket-links` | `GET /tickets/:id/links`, `POST /tickets/:id/links`, `DELETE /tickets/:id/links/:linkId` |
-| `time-tracking` | `GET /tickets/:id/time-entries`, `POST /tickets/:id/time-entries` |
-| `daily-updates` | `POST /tickets/:ticketId/daily-updates`, `GET /tickets/:ticketId/daily-updates`, `GET /daily-updates/today`, `GET /daily-updates/my-work`, `GET /daily-updates/blockers?projectId=` |
-| `teams` | `GET /teams`, `POST /teams` (body: `leadId`, `description`, `capacity`) |
-| `docs` | `GET /documents?projectId=&ticketId=&sprintId=`, `POST /documents`, `POST /documents/:id/upload-url` — Project Docs, not a wiki |
-| `reporting` | `GET /reporting/dashboard-summary`, `GET /reporting/weekly` (generated report — email / Slack / PDF; **no decks**) |
-| `dashboard-layouts` | `GET /dashboard/layout`, `PUT /dashboard/layout` (auto-save), `POST /dashboard/layout/reset` (reset to role-template default) — per-user layout, tenant-scoped |
-| `integrations` | `GET /integrations`, `POST /integrations/:provider/connect`, `POST /integrations/:provider/webhook`, `POST /integrations/import` (Jira/ClickUp import, Phase 1) |
-| `realtime` | `GET /notifications` (Inbox), `PATCH /notifications/:id/read`, `GET /notifications/stream` (Phase 1 stub — 501) |
-| `ai` | `GET /ai/status`, `POST /ai/ask`, `POST /ai/summary` (stub — worker job) |
-| `admin` | `GET /admin/organisations`, `GET /admin/users`, `GET /admin/audit-logs`, `GET /admin/health` (PLATFORM_ADMIN only) |
+| Module              | Endpoints                                                                                                                                                                                                                                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `health`            | `GET /health`                                                                                                                                                                                                                                                                 |
+| `auth`              | `POST /auth/dev-login` (dev only — disabled in production)                                                                                                                                                                                                                    |
+| `identity`          | `GET /identity/me` (includes the caller's effective permission set for the tenant)                                                                                                                                                                                            |
+| `roles`             | `GET /roles`, `POST /roles` (workspace admin, `roles.manage`), `PATCH /roles/:id`, `DELETE /roles/:id` (refused if members use it), `PUT /roles/:id/permissions` (replace the role's permission set), `GET /permissions` (the fixed `PermissionKey` catalog, grouped by area) |
+| `projects`          | `GET /projects`, `POST /projects` (creates default board; body: `key`, `leadId`, `startDate`, `targetDate`, `type`)                                                                                                                                                           |
+| `boards`            | `GET /boards?projectId=`, `GET /boards/:id`, `POST /boards`, `POST /boards/:id/columns`, `PATCH /boards/:boardId/columns/:columnId`, `DELETE /boards/:boardId/columns/:columnId`, `DELETE /boards/:id`                                                                        |
+| `sprints`           | `GET /sprints`, `POST /sprints`, `GET /sprints/backlog?projectId=` (un-sprinted tickets), `POST /sprints/:id/carry-over`                                                                                                                                                      |
+| `tickets`           | `GET /tickets?projectId=` (List + Board views, filters), `POST /tickets`, `PATCH /tickets/:id/status`, `POST /tickets/:id/attachments`, `GET /tickets/:id/activity`, `POST /tickets/bulk` (bulk edit)                                                                         |
+| `ticket-links`      | `GET /tickets/:id/links`, `POST /tickets/:id/links`, `DELETE /tickets/:id/links/:linkId`                                                                                                                                                                                      |
+| `time-tracking`     | `GET /tickets/:id/time-entries`, `POST /tickets/:id/time-entries`                                                                                                                                                                                                             |
+| `daily-updates`     | `POST /tickets/:ticketId/daily-updates`, `GET /tickets/:ticketId/daily-updates`, `GET /daily-updates/today`, `GET /daily-updates/my-work`, `GET /daily-updates/blockers?projectId=`                                                                                           |
+| `teams`             | `GET /teams`, `POST /teams` (body: `leadId`, `description`, `capacity`)                                                                                                                                                                                                       |
+| `docs`              | `GET /documents?projectId=&ticketId=&sprintId=`, `POST /documents`, `POST /documents/:id/upload-url` — Project Docs, not a wiki                                                                                                                                               |
+| `reporting`         | `GET /reporting/dashboard-summary`, `GET /reporting/weekly` (generated report — email / Slack / PDF; **no decks**)                                                                                                                                                            |
+| `dashboard-layouts` | `GET /dashboard/layout`, `PUT /dashboard/layout` (auto-save), `POST /dashboard/layout/reset` (reset to role-template default) — per-user layout, tenant-scoped                                                                                                                |
+| `integrations`      | `GET /integrations`, `POST /integrations/:provider/connect`, `POST /integrations/:provider/webhook`, `POST /integrations/import` (Jira/ClickUp import, Phase 1)                                                                                                               |
+| `realtime`          | `GET /notifications` (Inbox), `PATCH /notifications/:id/read`, `GET /notifications/stream` (Phase 1 stub — 501)                                                                                                                                                               |
+| `ai`                | `GET /ai/status`, `POST /ai/ask`, `POST /ai/summary` (stub — worker job)                                                                                                                                                                                                      |
+| `admin`             | `GET /admin/organisations`, `GET /admin/users`, `GET /admin/audit-logs`, `GET /admin/health` (PLATFORM_ADMIN only)                                                                                                                                                            |
 
 ## 6. Auth + tenant-isolation flow
 
@@ -576,7 +577,7 @@ budget enforcement is a TODO until the billing slice lands.
   `infra/terraform/` (VPC, ECS, RDS, S3, SQS, Cognito, ALB) — not yet
   applied.
 - **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`): `pnpm install
-  --frozen-lockfile` → typecheck → lint → test → build on PRs and pushes
+--frozen-lockfile` → typecheck → lint → test → build on PRs and pushes
   to `main`. Deployments via GitHub Actions OIDC (no long-lived keys).
 - **Observability:** health endpoints (`/health`, `/admin/health`),
   structured logs with tenant + request ids, token-usage logging for AI,

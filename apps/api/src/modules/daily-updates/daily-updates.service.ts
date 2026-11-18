@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { TimeEntriesService } from "../tickets/time-entries.service";
 
 export interface DailyUpdateInput {
   doneToday: string;
@@ -19,7 +21,11 @@ export interface DailyUpdateInput {
  */
 @Injectable()
 export class DailyUpdatesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly timeEntries: TimeEntriesService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   /** Start of today (UTC) — the day bucket for the one-per-day upsert. */
   private today(): Date {
@@ -33,11 +39,28 @@ export class DailyUpdatesService {
     const ticket = await this.prisma.ticket.findFirst({ where: { id: ticketId, tenantId } });
     if (!ticket) throw new Error("Ticket not found in this tenant");
     const date = this.today();
-    return this.prisma.dailyUpdate.upsert({
+    const update = await this.prisma.dailyUpdate.upsert({
       where: { ticketId_memberId_date: { ticketId, memberId, date } },
       update: { ...data, hasBlocker: data.hasBlocker ?? false },
       create: { tenantId, ticketId, memberId, date, ...data, hasBlocker: data.hasBlocker ?? false },
     });
+    // One source for time: DailyUpdate.timeSpentMin writes to TimeEntry.
+    // Best-effort — a time-sync failure must never fail the daily update.
+    if (data.timeSpentMin != null) {
+      await Promise.resolve(
+        this.timeEntries.syncFromDailyUpdate(tenantId, ticketId, {
+          memberId,
+          date,
+          minutes: data.timeSpentMin,
+        }),
+      ).catch(() => null);
+    }
+    if (data.hasBlocker) {
+      await Promise.resolve(
+        this.notifications.notifyBlocker(tenantId, [memberId], ticket, data.blockers),
+      ).catch(() => null);
+    }
+    return update;
   }
 
   /** Timeline of updates on one ticket, newest first. */
