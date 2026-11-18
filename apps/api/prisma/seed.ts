@@ -1,6 +1,11 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+// Prisma 7 requires a driver adapter. Seed connects through the Neon
+// pooler URL (DATABASE_URL); run with `prisma db seed` after migrate.
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 
 async function main() {
   const org = await prisma.organisation.upsert({
