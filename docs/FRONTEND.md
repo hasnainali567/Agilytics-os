@@ -56,26 +56,26 @@ anywhere in this product.
 
 #### Tokens
 
-| Token | Value | Use |
-|---|---|---|
-| App background | `~#F4F4F2` warm off-white | Page canvas |
-| Cards | `#FFFFFF` | All cards |
-| Outer canvas | `~#E8E8E8` | Shell behind the app background |
-| Primary accent lime | `~#A9E85C` (range `#A3E635`–`#B1F06A`) | Hero highlight card, active nav state, key accents |
-| Lighter lime sub-cards | `~#C0EE7E` | Sub-cards inside the lime hero card |
-| Deeper lime | `~#A3E635` | Donut / progress fills |
-| Deep forest green | `~#0F3D20` (range `#0E3B1F`–`#123F22`) | **Primary dark/action colour — use ONLY for the primary button, PRIORITY-style pills and % badges.** Never as a page background. |
-| Primary text | `~#111211` near-black | Headings, hero numbers, values |
-| Secondary / muted text | `~#8A8F8A` | Body secondary, chart labels |
-| Small labels | `~#7A7F7A` | Section labels |
-| Inactive nav | `~#9AA09A` | Unselected nav items |
-| Borders / dividers / track | `~#E5E7E5`–`#E8EAE8` | Card borders, dividers, progress tracks |
-| Donut track | `~#E3E6E3` | Donut background ring |
-| Pill background | `~#F0F0EE` | Neutral pill / chip background |
-| Positive green | `~#1FA463` | Done / positive trends, with explicit `+` |
-| Negative red | `~#E5484D` | At-risk / negative trends, with explicit `−` |
-| Orange accent | `~#FF6A2B` / `~#F96D2E` | Targets, confirmations, highlights |
-| Notification dot | `~#FF3B30` | Unread dot |
+| Token                      | Value                                  | Use                                                                                                                              |
+| -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| App background             | `~#F4F4F2` warm off-white              | Page canvas                                                                                                                      |
+| Cards                      | `#FFFFFF`                              | All cards                                                                                                                        |
+| Outer canvas               | `~#E8E8E8`                             | Shell behind the app background                                                                                                  |
+| Primary accent lime        | `~#A9E85C` (range `#A3E635`–`#B1F06A`) | Hero highlight card, active nav state, key accents                                                                               |
+| Lighter lime sub-cards     | `~#C0EE7E`                             | Sub-cards inside the lime hero card                                                                                              |
+| Deeper lime                | `~#A3E635`                             | Donut / progress fills                                                                                                           |
+| Deep forest green          | `~#0F3D20` (range `#0E3B1F`–`#123F22`) | **Primary dark/action colour — use ONLY for the primary button, PRIORITY-style pills and % badges.** Never as a page background. |
+| Primary text               | `~#111211` near-black                  | Headings, hero numbers, values                                                                                                   |
+| Secondary / muted text     | `~#8A8F8A`                             | Body secondary, chart labels                                                                                                     |
+| Small labels               | `~#7A7F7A`                             | Section labels                                                                                                                   |
+| Inactive nav               | `~#9AA09A`                             | Unselected nav items                                                                                                             |
+| Borders / dividers / track | `~#E5E7E5`–`#E8EAE8`                   | Card borders, dividers, progress tracks                                                                                          |
+| Donut track                | `~#E3E6E3`                             | Donut background ring                                                                                                            |
+| Pill background            | `~#F0F0EE`                             | Neutral pill / chip background                                                                                                   |
+| Positive green             | `~#1FA463`                             | Done / positive trends, with explicit `+`                                                                                        |
+| Negative red               | `~#E5484D`                             | At-risk / negative trends, with explicit `−`                                                                                     |
+| Orange accent              | `~#FF6A2B` / `~#F96D2E`                | Targets, confirmations, highlights                                                                                               |
+| Notification dot           | `~#FF3B30`                             | Unread dot                                                                                                                       |
 
 Status colours are used only for meaning (done green, in-progress lime/
 forest, blocked/at-risk red, amber/orange for warnings) — never as
@@ -87,13 +87,13 @@ colour, never colour alone.
 Geometric / humanist sans, closest to Inter / Plus Jakarta Sans /
 Poppins. No serif anywhere.
 
-| Element | Size / weight |
-|---|---|
+| Element      | Size / weight                                            |
+| ------------ | -------------------------------------------------------- |
 | Hero numbers | 52–56px, weight 500–600, tight tracking, tabular figures |
-| Card titles | 18–20px, weight 600 |
-| Labels | 13px, weight 500, grey |
-| Body | 14–15px, weight 400–500 |
-| Micro-labels | 10px, letter-spaced caps |
+| Card titles  | 18–20px, weight 600                                      |
+| Labels       | 13px, weight 500, grey                                   |
+| Body         | 14–15px, weight 400–500                                  |
+| Micro-labels | 10px, letter-spaced caps                                 |
 
 #### Corners and spacing
 
@@ -163,7 +163,7 @@ spacing, PM content only, never banking content.
 ### 1B. Customisable Dashboard + UI (locked 2026-11-17, decision 20)
 
 **Phase 1, with the Executive Dashboard.** Customisation is what makes
-the dashboard feel like *my* dashboard — and it is per **user**, not
+the dashboard feel like _my_ dashboard — and it is per **user**, not
 per workspace. The company's workflow (boards, statuses, reporting
 categories) stays shared; the view is personal.
 
@@ -171,16 +171,16 @@ categories) stays shared; the view is personal.
 holds one component per widget type, all built from the shared
 primitives in §1A (so a custom dashboard still looks like Agilytics):
 
-| Widget | Content it shows |
-|---|---|
-| KPI card | One stat + trend (tickets done, velocity, overdue, at-risk members…) |
-| Velocity chart | Points entering DONE per week, with time range |
-| Workload donut | Workload by member / team / status |
-| Today feed | Who updated / silent / open blockers |
-| Blockers list | Open blockers, by project or sprint |
-| At-risk list | At-risk tickets / members, from Daily Updates + stale |
-| My Work | Assigned to me, due today/overdue, blocked, mentioned |
-| AI brief | Daily brief / risk list (Phase 3 data, widget ships in Phase 1 with the brief slot) |
+| Widget         | Content it shows                                                                    |
+| -------------- | ----------------------------------------------------------------------------------- |
+| KPI card       | One stat + trend (tickets done, velocity, overdue, at-risk members…)                |
+| Velocity chart | Points entering DONE per week, with time range                                      |
+| Workload donut | Workload by member / team / status                                                  |
+| Today feed     | Who updated / silent / open blockers                                                |
+| Blockers list  | Open blockers, by project or sprint                                                 |
+| At-risk list   | At-risk tickets / members, from Daily Updates + stale                               |
+| My Work        | Assigned to me, due today/overdue, blocked, mentioned                               |
+| AI brief       | Daily brief / risk list (Phase 3 data, widget ships in Phase 1 with the brief slot) |
 
 Per user, on a grid: **add** a widget from the registry, **remove**
 one, **drag to rearrange**, **resize width/height** (grid units).
@@ -209,7 +209,7 @@ cache of the server record — never as the source of truth.
 
 **What customisation is NOT.** The Agibankz theme stays the system.
 Users do **not** pick colours, skins, fonts or themes — customisation
-is *what you see and where*, not re-skinning. The tokens in §1A are
+is _what you see and where_, not re-skinning. The tokens in §1A are
 not user-configurable.
 
 **The reporting engine underneath never changes.** Widgets read the

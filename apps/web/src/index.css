@@ -1,33 +1,82 @@
 @import "tailwindcss";
 
 /*
- * Agilytics OS design tokens — locked direction (2026-11-17).
- * Pin 1 Employee Dashboard shell + Pin 3 DealDeck reporting.
- * Dark navy sidebar, white canvas, deep-blue primary.
- * Colour is used only for meaning (status / priority / risk), never decoration.
+ * Agilytics OS design tokens — Agibankz (locked 2026-11-17, decision 19).
+ * Source: Agibankz Web Banking Dashboard pin by Delibix
+ * (https://www.pinterest.com/pin/834151162281618403/).
+ * Fresh, playful, airy, rounded-everything, lime pop on white.
+ * Hex values are close visual estimates from the flat pin image (~).
+ *
+ * CORRECTION: there is NO dark hero card in this pin. The hero is a
+ * white card (57%) + bright lime card (43%) split. Never build a dark
+ * hero card. Deep forest green is the primary action colour ONLY —
+ * primary buttons, PRIORITY-style pills, % badges — never a page
+ * background. No gradients, no glass, no dark surfaces; flat, almost
+ * no shadows. Status colours are used only for meaning, never as
+ * decoration; trends always carry an explicit + / − sign.
  */
 @theme {
-  --color-navy-950: #0b1730;
-  --color-navy-900: #0f1e3a;
-  --color-navy-800: #16294d;
-  --color-navy-700: #1e3a66;
-  --color-primary-600: #1d4ed8;
-  --color-primary-500: #2563eb;
-  --color-primary-100: #dbeafe;
-  --color-canvas: #f6f7f9;
+  --color-canvas: #f4f4f2;
+  --color-shell: #e8e8e8;
   --color-panel: #ffffff;
-  --color-line: #e5e7eb;
-  --color-ink: #111827;
-  --color-muted: #6b7280;
-  --color-done: #16a34a;
-  --color-progress: #2563eb;
-  --color-risk: #dc2626;
-  --color-warn: #d97706;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-line: #e5e7e5;
+  --color-track: #e3e6e3;
+  --color-pill: #f0f0ee;
+  --color-ink: #111211;
+  --color-muted: #8a8f8a;
+  --color-label: #7a7f7a;
+  --color-nav-inactive: #9aa09a;
+
+  --color-lime: #a9e85c;
+  --color-lime-light: #c0ee7e;
+  --color-lime-deep: #a3e635;
+  --color-forest: #0f3d20;
+
+  --color-done: #1fa463;
+  --color-progress: #a3e635;
+  --color-risk: #e5484d;
+  --color-warn: #ff6a2b;
+  --color-orange: #ff6a2b;
+  --color-dot: #ff3b30;
+
+  --font-sans: "Inter", "Plus Jakarta Sans", "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-shell: 26px;
+  --radius-card: 22px;
+  --radius-inner: 14px;
+  --radius-pill: 999px;
+}
+
+/*
+ * Deprecated compatibility aliases — DO NOT use in new code.
+ * The pre-Agibankz theme (dark navy sidebar, deep-blue primary) was
+ * superseded by decision 19. These aliases map the old token names
+ * onto Agibankz values so components not yet migrated (Sidebar /
+ * TopBar in components/layout.tsx, Button in components/ui.tsx) keep
+ * rendering instead of going unstyled. Remove them once those files
+ * are migrated to the tokens above.
+ */
+@theme {
+  --color-navy-950: #0f3d20;
+  --color-navy-900: #0f3d20;
+  --color-navy-800: #123f22;
+  --color-navy-700: #1a5230;
+  --color-primary-600: #0f3d20;
+  --color-primary-500: #1fa463;
+  --color-primary-100: #c0ee7e;
 }
 
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+/* Hero numbers: 52–56px, weight 500–600, tight tracking, tabular figures. */
+.hero-number {
+  font-size: 54px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
 }

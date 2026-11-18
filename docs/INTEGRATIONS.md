@@ -24,7 +24,7 @@
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Slack**                | Channel alerts (ticket created / overdue / at-risk), create a task from a message, daily digest to a channel, slash commands (`/agilytics create …`) |
 | **GitHub**               | Link PRs/commits to tickets, ticket status moves on PR merge, PR list inside the ticket, branch naming from ticket ID                                |
-| **Notion**               | Sync/link docs to projects, embed Notion docs in Project Docs (the escape hatch for teams that live in Notion — we do not rebuild Notion) |
+| **Notion**               | Sync/link docs to projects, embed Notion docs in Project Docs (the escape hatch for teams that live in Notion — we do not rebuild Notion)            |
 | **Google Calendar**      | Sprint deadlines and due dates as calendar events, meeting → action items                                                                            |
 | **Gmail / Google Drive** | Attach Drive files to tickets/projects, create a task from an email                                                                                  |
 

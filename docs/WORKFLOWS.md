@@ -59,7 +59,7 @@ One row per **member per ticket per day** (upsert on
   `STALE_AFTER_DAYS = 3`). Reported as **silent / stale tracking**, not
   "quiet-member detection" (that name is cut — it read as surveillance).
 - **Blocker lists** — per project and per workspace. Blockers are
-  actionable: `TicketLink` (BLOCKS / BLOCKED_BY) shows *what* is
+  actionable: `TicketLink` (BLOCKS / BLOCKED_BY) shows _what_ is
   blocking a ticket, not just a flag.
 - **Per-person tracking** — who updated today, who is silent, who is
   repeatedly blocked.

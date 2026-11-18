@@ -14,13 +14,13 @@
 As SaaS / platform admins (`PLATFORM_ADMIN`, `PLATFORM_SUPPORT`), we can
 see and manage **tenant metadata and platform operations only**:
 
-| We see / manage | Why | Where it lives |
-|---|---|---|
-| Tenant metadata — company name, slug, plan, billing status, user count, storage usage, feature flags | Run the platform, bill, support plans | `organisations`, platform admin panel (`/admin`) |
-| System health — uptime, error rates, latency, queue depth, per-service status | Keep the platform up | Admin health view, CloudWatch |
-| Platform audit log **of our own admin actions** — who on our team did what, to which tenant's metadata, and when | Accountability for us | `AuditLog` (admin actions only) |
-| Support tickets the customer filed | Answer them | Support channel (not in the product DB) |
-| Aggregated anonymous usage counts — e.g. "1,240 daily updates posted platform-wide yesterday", never who or what | Capacity planning, product decisions | Aggregated counters only, no content |
+| We see / manage                                                                                                  | Why                                   | Where it lives                                   |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------ |
+| Tenant metadata — company name, slug, plan, billing status, user count, storage usage, feature flags             | Run the platform, bill, support plans | `organisations`, platform admin panel (`/admin`) |
+| System health — uptime, error rates, latency, queue depth, per-service status                                    | Keep the platform up                  | Admin health view, CloudWatch                    |
+| Platform audit log **of our own admin actions** — who on our team did what, to which tenant's metadata, and when | Accountability for us                 | `AuditLog` (admin actions only)                  |
+| Support tickets the customer filed                                                                               | Answer them                           | Support channel (not in the product DB)          |
+| Aggregated anonymous usage counts — e.g. "1,240 daily updates posted platform-wide yesterday", never who or what | Capacity planning, product decisions  | Aggregated counters only, no content             |
 
 ## 2. What we NEVER see — no application-level access
 
