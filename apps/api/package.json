@@ -7,7 +7,7 @@
     "@aws-sdk/client-ses": "^3.900.0",
     "@aws-sdk/client-sqs": "^3.900.0",
     "@aws-sdk/s3-request-presigner": "^3.900.0",
-    "@langchain/core": "^0.3.80",
+    "@langchain/core": "^1.4.1",
     "@langchain/langgraph": "^1.7.5",
     "@nestjs/common": "^11.1.0",
     "@nestjs/config": "^4.0.2",

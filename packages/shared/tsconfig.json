@@ -2,8 +2,8 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "noEmit": false,
     "outDir": "dist",
     "strict": true,
