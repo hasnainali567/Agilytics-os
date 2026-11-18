@@ -25,7 +25,7 @@ export function VelocityChart({ data }: { data: VelocityPoint[] }) {
             <Tooltip />
             <Legend />
             <Bar dataKey="planned" fill="#94a3b8" name="Planned" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="completed" fill="#1d4ed8" name="Completed" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="completed" fill="#A3E635" name="Completed" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

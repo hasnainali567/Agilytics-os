@@ -2,37 +2,39 @@ import { Link } from "@tanstack/react-router";
 
 const nav = [
   { to: "/", label: "Dashboard" },
+  { to: "/inbox", label: "Inbox" },
   { to: "/reports", label: "Reports" },
   { to: "/projects", label: "Projects" },
   { to: "/sprints", label: "Sprints" },
   { to: "/members", label: "Members" },
   { to: "/connections", label: "Connections" },
   { to: "/settings/workflows", label: "Workflows" },
+  { to: "/settings/roles", label: "Roles" },
   { to: "/admin", label: "Platform Admin" },
 ];
 
 export function Sidebar() {
   return (
-    <aside className="flex w-60 shrink-0 flex-col bg-navy-900 text-white">
+    <aside className="flex w-60 shrink-0 flex-col rounded-[26px] bg-panel text-ink">
       <div className="px-5 py-5">
         <p className="text-lg font-bold tracking-tight">Agilytics OS</p>
-        <p className="text-xs text-slate-400">AI-powered team OS</p>
+        <p className="text-xs text-muted">AI-powered team OS</p>
       </div>
       <nav className="flex-1 space-y-1 px-3">
         {nav.map((item) => (
           <Link
             key={item.to}
             to={item.to}
-            className="block rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-navy-800 hover:text-white [&.active]:bg-navy-700 [&.active]:text-white"
+            className="block rounded-full px-3 py-2 text-sm text-muted hover:bg-canvas hover:text-ink [&.active]:bg-lime [&.active]:text-ink"
           >
             {item.label}
           </Link>
         ))}
       </nav>
-      <div className="border-t border-navy-800 px-5 py-4 text-xs text-slate-400">
+      <div className="border-t border-line px-5 py-4 text-xs text-muted">
         v2.0 — from scratch
         <br />
-        MOCK data until the API lands
+        Live API data
       </div>
     </aside>
   );

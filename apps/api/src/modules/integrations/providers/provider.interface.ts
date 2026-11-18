@@ -1,5 +1,5 @@
 /** One provider = one file, same interface (see docs/INTEGRATIONS.md). */
-export type ProviderKind = "SLACK" | "GITHUB" | "NOTION" | "GOOGLE" | "ZAPIER" | "WEBHOOK";
+export type ProviderKind = "SLACK" | "GITHUB" | "NOTION" | "GOOGLE_CALENDAR" | "ZAPIER" | "WEBHOOK";
 
 export interface IntegrationProvider {
   readonly provider: ProviderKind;

@@ -23,14 +23,30 @@ export class ProjectsController {
   @Post()
   async create(@TenantId() tenantId: string, @Body() body: unknown) {
     const parsed = createProjectSchema.parse(body);
-    // A project is born with its default board (Backlog / To Do /
-    // In Progress / Review / Done) — a starting template only; the
-    // workspace admin can rename, reorder, add or remove columns freely
-    // (see docs/WORKFLOWS.md). The template lives in @agilytics/shared
-    // so the web can preview it without an API call.
+    // Project key: first letters of the name's words, e.g. "Engineering"
+    // -> ENG, "Mobile App" -> MA. Unique per tenant; append a number on
+    // conflict. Ticket keys are built from this (ENG-123).
+    const baseKey =
+      parsed.name
+        .split(/\s+/)
+        .map((w) => w[0])
+        .join("")
+        .replace(/[^A-Za-z]/g, "")
+        .toUpperCase()
+        .slice(0, 4) || "PRJ";
+    let key = baseKey;
+    for (let n = 2; ; n += 1) {
+      const existing = await this.prisma.project.findFirst({
+        where: { tenantId, key },
+        select: { id: true },
+      });
+      if (!existing) break;
+      key = `${baseKey}${n}`;
+    }
     return this.prisma.project.create({
       data: {
         tenantId,
+        key,
         name: parsed.name,
         description: parsed.description,
         boards: {

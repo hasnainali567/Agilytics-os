@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   list(tenantId: string, projectId?: string) {
     return this.prisma.ticket.findMany({
@@ -27,13 +31,42 @@ export class TicketsService {
       assigneeId?: string;
       dueDate?: Date;
     },
+    createdById?: string,
   ) {
     if (data.statusId) {
       await this.assertColumn(tenantId, data.statusId, data.boardId);
     }
-    return this.prisma.ticket.create({
-      data: { tenantId, ...data },
+    // Human key: project key + per-project sequence (ENG-123). Generated
+    // here because createTicketSchema carries no key and Ticket.key is
+    // required by Prisma; retry on a unique conflict (concurrent creates).
+    const project = await this.prisma.project.findFirst({
+      where: { id: data.projectId, tenantId },
     });
+    if (!project) throw new Error("Project not found in this tenant");
+    let ticket: Awaited<ReturnType<typeof this.prisma.ticket.create>> | null = null;
+    for (let attempt = 0; attempt < 5 && !ticket; attempt += 1) {
+      const count = await this.prisma.ticket.count({ where: { projectId: data.projectId } });
+      const key = `${project.key}-${count + 1 + attempt}`;
+      ticket = await this.prisma.ticket
+        .create({ data: { tenantId, ...data, key } })
+        .catch(() => null);
+    }
+    if (!ticket) throw new Error("Could not generate a unique ticket key");
+    // Assignee is auto-watched and notified (Slice C: inbox on assignment).
+    // Skipped silently when there is no assignee, or the creator assigned it to themself.
+    if (data.assigneeId) {
+      await this.prisma.ticketWatcher
+        .upsert({
+          where: { ticketId_userId: { ticketId: ticket.id, userId: data.assigneeId } },
+          update: {},
+          create: { ticketId: ticket.id, userId: data.assigneeId },
+        })
+        .catch(() => null);
+      await Promise.resolve(
+        this.notifications.notifyAssignment(tenantId, data.assigneeId, ticket, createdById),
+      ).catch(() => null);
+    }
+    return ticket;
   }
 
   /**

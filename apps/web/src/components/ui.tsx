@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-line bg-panel shadow-sm ${className}`}>
+    <div className={`rounded-[22px] border border-line bg-panel shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -50,7 +50,7 @@ export function Button({
   asChild?: boolean;
 }) {
   const base =
-    "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors";
+    "inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors";
   const style =
     variant === "primary"
       ? "bg-primary-600 text-white hover:bg-primary-500"
