@@ -16,6 +16,7 @@ async function main() {
   const project = await prisma.project.create({
     data: {
       tenantId: org.id,
+      key: "WEB",
       name: "Website Redesign",
       description: "Seed project — delete before real use.",
     },
@@ -69,6 +70,7 @@ async function main() {
       sprintId: sprint.id,
       boardId: board.id,
       statusId: inProgress?.id,
+      key: "WEB-1",
       title: "Build the Home dashboard",
       priority: "HIGH",
       estimate: 5,
