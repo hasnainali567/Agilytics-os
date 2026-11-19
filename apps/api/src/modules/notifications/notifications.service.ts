@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import type { NotificationType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { RealtimeService } from "../realtime/realtime.service";
 
 export interface NotificationFilter {
   type?: NotificationType;
@@ -41,7 +42,10 @@ function ticketLabel(ticket: TicketRef): string {
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(RealtimeService) private readonly realtime?: RealtimeService,
+  ) {}
 
   list(tenantId: string, userId: string, filter: NotificationFilter = {}) {
     return this.prisma.notification.findMany({
@@ -83,15 +87,25 @@ export class NotificationsService {
   }
 
   /** Canonical writer — every trigger below goes through here. */
-  createForUser(
+  async createForUser(
     tenantId: string,
     userId: string | null | undefined,
     input: CreateNotificationInput,
   ) {
     if (!userId) return null;
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: { tenantId, userId, ...input },
     });
+    // [Phase 2 realtime] one-line emit — fire-and-forget.
+    this.realtime?.emitToWorkspace(tenantId, "notification.created", {
+      notificationId: notification.id,
+      userId,
+      type: input.type,
+      entity: input.entity,
+      entityId: input.entityId,
+      title: input.title,
+    });
+    return notification;
   }
 
   /** Ticket assignment — called from TicketsService.create. Never notifies the actor about their own action. */

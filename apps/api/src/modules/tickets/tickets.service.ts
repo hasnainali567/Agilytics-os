@@ -1,12 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import { emitAutomationEvent } from "../../common/automation-events";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { RealtimeService } from "../realtime/realtime.service";
 
 @Injectable()
 export class TicketsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    @Optional() @Inject(RealtimeService) private readonly realtime?: RealtimeService,
   ) {}
 
   list(tenantId: string, projectId?: string) {
@@ -52,6 +55,23 @@ export class TicketsService {
         .catch(() => null);
     }
     if (!ticket) throw new Error("Could not generate a unique ticket key");
+    // [Phase 2 realtime] one-line emit — fire-and-forget, never breaks the request.
+    this.realtime?.emitToWorkspace(tenantId, "ticket.created", {
+      ticketId: ticket.id,
+      key: ticket.key,
+      title: ticket.title,
+      projectId: ticket.projectId,
+    });
+    // [worker-b: automations] one-line hook — automation rules (ticket.created). Never throws.
+    emitAutomationEvent("ticket.created", tenantId, {
+      ticketId: ticket.id,
+      ticketKey: ticket.key,
+      ticketTitle: ticket.title,
+      projectId: ticket.projectId,
+      assigneeId: ticket.assigneeId ?? undefined,
+      userId: createdById,
+      priority: ticket.priority,
+    });
     // Assignee is auto-watched and notified (Slice C: inbox on assignment).
     // Skipped silently when there is no assignee, or the creator assigned it to themself.
     if (data.assigneeId) {
@@ -97,6 +117,29 @@ export class TicketsService {
         data: { tenantId, ticketId, fromStatusId: ticket.statusId, toStatusId, changedById, note },
       }),
     ]);
+    // [Phase 2 realtime] one-line emits — fire-and-forget.
+    const statusPayload = { ticketId, fromStatusId: ticket.statusId, toStatusId, changedById };
+    this.realtime?.emitToWorkspace(tenantId, "ticket.status_changed", statusPayload);
+    this.realtime?.emitToTicket(ticketId, "ticket.status_changed", statusPayload);
+    this.realtime?.emitToTicket(ticketId, "ticket.updated", { ticketId, toStatusId });
+    // [worker-b: automations] one-line hooks — automation rules. Never throws;
+    // a failed rule can never break the status change. ticket.done fires
+    // in addition to ticket.status_changed when the new column is DONE.
+    const toColumn = await this.prisma.boardColumn
+      .findUnique({ where: { id: toStatusId }, select: { category: true } })
+      .catch(() => null);
+    const automationCtx = {
+      ticketId,
+      ticketKey: ticket.key,
+      ticketTitle: ticket.title,
+      projectId: ticket.projectId,
+      assigneeId: ticket.assigneeId ?? undefined,
+      userId: changedById,
+      priority: ticket.priority,
+      toCategory: toColumn?.category,
+    };
+    emitAutomationEvent("ticket.status_changed", tenantId, automationCtx);
+    if (toColumn?.category === "DONE") emitAutomationEvent("ticket.done", tenantId, automationCtx);
     return updated;
   }
 

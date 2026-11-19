@@ -39,36 +39,73 @@
 
 ## 3. Phase 2 — live collaboration (NestJS WebSocket gateway)
 
-- **Gateway:** `@nestjs/websockets` + socket.io, one gateway in
-  `apps/api` (`modules/realtime/`). It runs in the API task — no
-  separate realtime service on day one.
+**BUILT (Phase 2, worker c).** One gateway in `apps/api`
+(`modules/realtime/realtime.gateway.ts`), registered in
+`RealtimeModule` alongside the kept-as-is SSE 501 stub.
+
+- **Gateway:** `@nestjs/websockets` + socket.io (`socket.io`,
+  `@nestjs/platform-socket.io` in the API; `socket.io-client` in the
+  web behind `useRealtime`, `apps/web/src/lib/useRealtime.ts`). It
+  runs in the API task — no separate realtime service.
 - **Rooms (tenant-scoped):**
   - `workspace:{tenantId}` — board updates, sprint changes, dashboard
-    KPI refresh triggers.
+    KPI refresh triggers. Auto-joined on connect.
   - `ticket:{ticketId}` — comments, status moves, assignee changes on
-    one ticket.
-  - A socket joins a room only after the handshake JWT proves
-    membership of that tenant; joining another tenant's room is rejected
-    and audit-logged.
-- **Events (first set):** live board updates (ticket moved/created),
-  comments, **presence** (who is viewing a ticket/board), **typing
-  indicators** (comment composer), and **notifications** (mentions,
-  assignments, automation results).
-- **Auth on handshake:** the socket handshake carries the Cognito JWT;
-  the gateway verifies it against the Cognito JWKS (same verifier as
-  the REST `JwtAuthGuard`) and reads `tenant_id` from the claims. No
-  token, no connection. Reconnect re-verifies.
-- **Cross-task fan-out — Redis/Valkey pub-sub (the Phase 2 dependency).**
-  With more than one Fargate task, a board update emitted on task A
-  must reach sockets connected to task B. That needs a pub-sub adapter:
-  **Redis/Valkey, ElastiCache Serverless**, as the socket.io adapter
-  backing store. This is **documented here, NOT added to the scaffold**:
-  no Redis/Valkey, no ElastiCache, no adapter package is installed yet.
-  Phase 2 adds `@socket.io/redis-adapter` (or the Valkey equivalent),
-  the ElastiCache Serverless Terraform, and the adapter wiring in the
-  gateway — and only then may the API scale past one task for realtime.
-  Until that lands, run the API as a single task for any socket traffic
-  (REST still scales horizontally; only realtime fan-out is pinned).
+    one ticket. Joined via a `joinTicket` event, only after the
+    gateway checks the ticket belongs to the socket's tenant;
+    joining another tenant's room is rejected and audit-logged
+    (`realtime.room_join_rejected`).
+- **Events (first set, live):** `ticket.created`, `ticket.updated`,
+  `ticket.status_changed`, `daily_update.created`,
+  `notification.created`. Emitted by the injectable `RealtimeService`
+  (`emitToWorkspace` / `emitToTicket`) through the event bus — one-line
+  fire-and-forget hooks in `TicketsService` (create / status change),
+  `DailyUpdatesService` (upsert) and `NotificationsService`
+  (`createForUser`, the canonical writer). Emits never break the
+  request that triggered them.
+- **Auth on handshake:** the socket handshake carries the stored JWT
+  (`handshake.auth.token` or `?token=`); the gateway verifies it with
+  the SAME verification as the REST `JwtAuthGuard`
+  (`apps/api/src/modules/realtime/socket-auth.ts` — symmetric
+  dev-login JWT today; the Cognito JWKS swap is documented there).
+  No token / invalid token = no connection. Reconnect re-verifies.
+- **Presence + typing (minimal, ephemeral):** `presence.join` /
+  `presence.leave` broadcast `{userId, name, ticketId/boardId}` to the
+  room; `typing.start` / `typing.stop` broadcast a `typing` event.
+  Presence state lives only in gateway memory and expires on
+  disconnect — never persisted. **Live cursors are still Phase 3.**
+- **Rate-limit:** excess presence/typing pings per connection are
+  dropped, not queued (`PresenceRateLimiter`: 20 events / 10s window
+  per connection).
+- **Web client:** `useRealtime(ticketId?)` — singleton socket, joins
+  the workspace room, joins the ticket room on demand, exposes
+  connection status + presence/typing lists. On `ticket.*` /
+  `daily_update.created` / `notification.created` it invalidates the
+  matching TanStack Query keys (`tickets`, `dashboard/summary`,
+  `notifications`) so the board/dashboard refresh live. Wired into
+  the board page, the dashboard, and the `TopBar` (`LiveIndicator`:
+  Live / Reconnecting / Offline). **Polling stays the fallback:**
+  dashboard `refetchInterval` (30s), refetch-on-focus and
+  invalidation after mutations are unchanged — if the socket is
+  unavailable or drops, the UI keeps working and never goes blank.
+- **Cross-task fan-out — event bus with two backends**
+  (`apps/api/src/modules/realtime/event-bus.service.ts`):
+  - **In-memory (default):** local dev, single task, no Redis
+    required — the app boots and realtime works with zero extra
+    infrastructure.
+  - **Redis/Valkey (optional):** enabled only when `REDIS_URL` is set
+    (see `apps/api/.env.example`). `ioredis` is loaded lazily, so the
+    app still boots without Redis; a Redis failure degrades to a
+    logged warning and in-memory delivery. One channel,
+    `agilytics:realtime`; the gateway subscribes and fans envelopes
+    out to rooms on its task, so an event emitted on task A reaches
+    sockets on task B.
+  - **Still TODO:** ElastiCache Serverless Terraform, and the
+    `@socket.io/redis-adapter` as the socket.io adapter backing store
+    (the bus covers event fan-out; the adapter would additionally
+    sync room membership across tasks). Until that lands, run the API
+    as a single task for any socket traffic (REST still scales
+    horizontally; only realtime fan-out is pinned).
 
 ## 4. Phase 3 — full live experience
 
@@ -99,9 +136,19 @@
 
 ## 6. What is NOT built yet
 
-- Everything in Phase 2 (gateway, rooms, events, Redis/Valkey adapter,
-  ElastiCache Terraform) and Phase 3 (activity feed, live cursors).
-- The SSE endpoint is a 501 stub; no notification storage exists.
-- No socket client in the web app — `socket.io-client` is not
-  installed; Phase 2 adds it behind a `useRealtime` hook that falls
-  back to polling when the socket is unavailable.
+- Phase 3 (activity feed, live cursors).
+- ElastiCache Serverless Terraform and the `@socket.io/redis-adapter`
+  backing store (the event bus already fans events across tasks when
+  `REDIS_URL` is set; see §3).
+- The SSE endpoint is still a 501 stub; the notification stream is
+  served over the WebSocket (`notification.created`) instead.
+- Time tracking (Phase 2, worker c) — **BUILT**: the ticket
+  `GET/POST/DELETE /tickets/:id/time-entries` endpoints already
+  existed and were verified, not re-implemented. Added:
+  `GET /reporting/time?sprintId=&projectId=` (totals = sum of minutes
+  grouped by member/ticket, plus total hours), the ticket detail panel
+  (entries list + total + add-entry form), and a per-sprint time
+  report section on the Reports page. `DailyUpdate.timeSpentMin`
+  still syncs to `TimeEntry` via the existing
+  `TimeEntriesService.syncFromDailyUpdate` hook in
+  `DailyUpdatesService.upsertToday` — verified, not duplicated.

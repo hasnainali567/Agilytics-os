@@ -1,6 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import { emitAutomationEvent } from "../../common/automation-events";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { RealtimeService } from "../realtime/realtime.service";
 import { TimeEntriesService } from "../tickets/time-entries.service";
 
 export interface DailyUpdateInput {
@@ -25,6 +27,7 @@ export class DailyUpdatesService {
     private readonly prisma: PrismaService,
     private readonly timeEntries: TimeEntriesService,
     private readonly notifications: NotificationsService,
+    @Optional() @Inject(RealtimeService) private readonly realtime?: RealtimeService,
   ) {}
 
   /** Start of today (UTC) — the day bucket for the one-per-day upsert. */
@@ -60,6 +63,20 @@ export class DailyUpdatesService {
         this.notifications.notifyBlocker(tenantId, [memberId], ticket, data.blockers),
       ).catch(() => null);
     }
+    // [Phase 2 realtime] one-line emit — fire-and-forget.
+    const duPayload = { ticketId, memberId, date: date.toISOString().slice(0, 10), hasBlocker: data.hasBlocker ?? false };
+    this.realtime?.emitToWorkspace(tenantId, "daily_update.created", duPayload);
+    this.realtime?.emitToTicket(ticketId, "daily_update.created", duPayload);
+    // [worker-b: automations] one-line hook — automation rules (daily_update.created). Never throws.
+    emitAutomationEvent("daily_update.created", tenantId, {
+      ticketId,
+      ticketKey: ticket.key,
+      ticketTitle: ticket.title,
+      projectId: ticket.projectId,
+      assigneeId: ticket.assigneeId ?? undefined,
+      userId: memberId,
+      text: data.doneToday,
+    });
     return update;
   }
 

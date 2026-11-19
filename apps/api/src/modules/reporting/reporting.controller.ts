@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { TenantId } from "../../common/decorators/tenant.decorator";
@@ -14,5 +14,15 @@ export class ReportingController {
   @Get("dashboard-summary")
   dashboardSummary(@TenantId() tenantId: string) {
     return this.reporting.dashboardSummary(tenantId);
+  }
+
+  /** Time report — total hours + top members/tickets, per sprint, per project, or workspace-wide. */
+  @Get("time")
+  timeTotals(
+    @TenantId() tenantId: string,
+    @Query("sprintId") sprintId?: string,
+    @Query("projectId") projectId?: string,
+  ) {
+    return this.reporting.timeTotals(tenantId, { sprintId, projectId });
   }
 }

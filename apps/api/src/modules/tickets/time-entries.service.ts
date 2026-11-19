@@ -10,6 +10,18 @@ export interface CreateTimeEntryInput {
   note?: string;
 }
 
+export interface TimeTotalsFilter {
+  sprintId?: string;
+  projectId?: string;
+}
+
+export interface TimeTotals {
+  totalMinutes: number;
+  totalHours: number;
+  byMember: { memberId: string; memberName: string; minutes: number }[];
+  byTicket: { ticketId: string; ticketTitle: string; minutes: number }[];
+}
+
 export interface SyncDailyUpdateTimeInput {
   memberId: string;
   date: Date;
@@ -36,6 +48,65 @@ export class TimeEntriesService {
   private async assertTicketInTenant(tenantId: string, ticketId: string) {
     const ticket = await this.prisma.ticket.findFirst({ where: { id: ticketId, tenantId } });
     if (!ticket) throw new NotFoundException("Ticket not found in this tenant");
+  }
+
+  /**
+   * Per-sprint / per-project totals — sums minutes grouped by member and
+   * by ticket. No filter = whole workspace. A sprint/project filter that
+   * does not belong to this tenant is a 404 (same tenant rule as list).
+   */
+  async totals(tenantId: string, filter: TimeTotalsFilter = {}): Promise<TimeTotals> {
+    if (filter.sprintId) {
+      const sprint = await this.prisma.sprint.findFirst({
+        where: { id: filter.sprintId, tenantId },
+      });
+      if (!sprint) throw new NotFoundException("Sprint not found in this tenant");
+    }
+    if (filter.projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: { id: filter.projectId, tenantId },
+      });
+      if (!project) throw new NotFoundException("Project not found in this tenant");
+    }
+    const entries = await this.prisma.timeEntry.findMany({
+      where: {
+        tenantId,
+        ticket: {
+          ...(filter.sprintId ? { sprintId: filter.sprintId } : {}),
+          ...(filter.projectId ? { projectId: filter.projectId } : {}),
+        },
+      },
+      include: {
+        member: { select: { id: true, name: true } },
+        ticket: { select: { id: true, title: true } },
+      },
+    });
+    const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0);
+    const byMemberMap = new Map<string, { memberId: string; memberName: string; minutes: number }>();
+    const byTicketMap = new Map<string, { ticketId: string; ticketTitle: string; minutes: number }>();
+    for (const e of entries) {
+      const m = byMemberMap.get(e.memberId) ?? {
+        memberId: e.memberId,
+        memberName: e.member.name,
+        minutes: 0,
+      };
+      m.minutes += e.minutes;
+      byMemberMap.set(e.memberId, m);
+      const t = byTicketMap.get(e.ticketId) ?? {
+        ticketId: e.ticketId,
+        ticketTitle: e.ticket.title,
+        minutes: 0,
+      };
+      t.minutes += e.minutes;
+      byTicketMap.set(e.ticketId, t);
+    }
+    const byMinutesDesc = (a: { minutes: number }, b: { minutes: number }) => b.minutes - a.minutes;
+    return {
+      totalMinutes,
+      totalHours: Math.round((totalMinutes / 60) * 100) / 100,
+      byMember: [...byMemberMap.values()].sort(byMinutesDesc),
+      byTicket: [...byTicketMap.values()].sort(byMinutesDesc),
+    };
   }
 
   /** Parse a YYYY-MM-DD date (or default to today, UTC); never the future. */

@@ -7,7 +7,9 @@ import { createTicketSchema } from "@agilytics/shared";
 import { Link } from "@tanstack/react-router";
 import { TopBar } from "../components/layout";
 import { DailyUpdateComposer } from "../components/DailyUpdateComposer";
+import { TimeEntriesPanel } from "../components/TimeEntriesPanel";
 import { Card, Field, Input, Select } from "../components/ui";
+import { useRealtime } from "../lib/useRealtime";
 import {
   createTicket,
   fetchBoards,
@@ -109,6 +111,10 @@ export function TicketBoardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedBoardId, setSelectedBoardId] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  // Phase 2 realtime: joins the selected ticket's room + announces
+  // presence; ticket events invalidate the board queries live.
+  const { presence, typingUsers } = useRealtime(selectedTicketId ?? undefined);
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -396,6 +402,16 @@ export function TicketBoardPage() {
                     {selectedTicket.description ? (
                       <p className="mt-2 text-sm text-muted">{selectedTicket.description}</p>
                     ) : null}
+                    {presence.length > 0 ? (
+                      <p className="mt-2 text-xs text-muted">
+                        Viewing now: {presence.map((p) => p.name ?? p.userId).join(", ")}
+                      </p>
+                    ) : null}
+                    {typingUsers.length > 0 ? (
+                      <p className="mt-1 text-xs text-muted">
+                        {typingUsers.map((p) => p.name ?? p.userId).join(", ")} typing…
+                      </p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -465,6 +481,7 @@ export function TicketBoardPage() {
                     </span>
                   </p>
                 </div>
+                <TimeEntriesPanel ticketId={selectedTicket.id} />
               </Card>
             ) : null}
 

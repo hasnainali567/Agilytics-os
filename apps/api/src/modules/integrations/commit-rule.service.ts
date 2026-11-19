@@ -131,9 +131,9 @@ export class CommitRuleService {
           message: commit.message,
           authorName: commit.authorName,
         };
-        if (action === "CLOSE") await this.slack.postTicketClosed(channel, ref, commitRef);
-        else if (action === "START") await this.slack.postTicketStarted(channel, ref, commitRef);
-        else await this.slack.postTicketLinked(channel, ref, commitRef);
+        if (action === "CLOSE") await this.slack.postTicketClosed(channel, ref, commitRef, tenantId);
+        else if (action === "START") await this.slack.postTicketStarted(channel, ref, commitRef, tenantId);
+        else await this.slack.postTicketLinked(channel, ref, commitRef, tenantId);
         outcome.slackPosted = true;
       } catch (err) {
         this.logger.warn(`Slack post failed for ${key}: ${(err as Error).message}`);

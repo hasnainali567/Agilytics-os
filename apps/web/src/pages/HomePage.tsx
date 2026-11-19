@@ -5,6 +5,7 @@ import { Button, Card } from "../components/ui";
 import { TopBar } from "../components/layout";
 import { DashboardGrid } from "../features/dashboard/DashboardGrid";
 import { fetchDashboardSummary } from "../lib/api";
+import { useRealtime } from "../lib/useRealtime";
 
 /**
  * Executive Dashboard — Agibankz (decision 19).
@@ -15,6 +16,9 @@ import { fetchDashboardSummary } from "../lib/api";
  * Real data only, from GET /api/v1/reporting/dashboard-summary.
  */
 export function HomePage() {
+  // Phase 2 realtime: live invalidation on ticket/daily-update events;
+  // the 30s polling below stays as the fallback when the socket is down.
+  useRealtime();
   const [showHeroNumber, setShowHeroNumber] = useState(true);
   const [editing, setEditing] = useState(false);
   const { data, isPending, isError } = useQuery({

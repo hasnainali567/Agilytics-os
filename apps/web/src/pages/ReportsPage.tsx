@@ -4,7 +4,58 @@ import { TopBar } from "../components/layout";
 import { Card, CardHeader } from "../components/ui";
 import { MembersTable } from "../components/MembersTable";
 import { VelocityChart } from "../components/VelocityChart";
-import { fetchDashboardSummary, fetchProjects, fetchTickets } from "../lib/api";
+import {
+  fetchDashboardSummary,
+  fetchProjects,
+  fetchSprints,
+  fetchTickets,
+  fetchTimeReport,
+} from "../lib/api";
+
+function formatHours(minutes: number): string {
+  return `${(minutes / 60).toFixed(1)}h`;
+}
+
+/** One sprint's time row — total hours + top members by time logged. */
+function SprintTimeRow({ sprintId, name }: { sprintId: string; name: string }) {
+  const query = useQuery({
+    queryKey: ["reporting", "time", sprintId],
+    queryFn: () => fetchTimeReport({ sprintId }),
+    retry: false,
+  });
+  if (query.isPending) {
+    return (
+      <tr className="border-b border-line last:border-0">
+        <td className="px-5 py-3 font-medium text-ink">{name}</td>
+        <td colSpan={2} className="px-5 py-3 text-muted">
+          Loading…
+        </td>
+      </tr>
+    );
+  }
+  if (query.isError || !query.data) {
+    return (
+      <tr className="border-b border-line last:border-0">
+        <td className="px-5 py-3 font-medium text-ink">{name}</td>
+        <td colSpan={2} className="px-5 py-3 text-muted">
+          Couldn't load time for this sprint.
+        </td>
+      </tr>
+    );
+  }
+  const top = query.data.byMember.slice(0, 3);
+  return (
+    <tr className="border-b border-line last:border-0">
+      <td className="px-5 py-3 font-medium text-ink">{name}</td>
+      <td className="px-5 py-3 tabular-nums">{formatHours(query.data.totalMinutes)}</td>
+      <td className="px-5 py-3 text-muted">
+        {top.length === 0
+          ? "No time logged yet"
+          : top.map((m) => `${m.memberName} ${formatHours(m.minutes)}`).join(" · ")}
+      </td>
+    </tr>
+  );
+}
 
 const SEGMENT_COLORS = ["#a3e635", "#0f3d20", "#1fa463", "#ff6a2b", "#c0ee7e", "#8a8f8a"];
 
@@ -100,6 +151,16 @@ export function ReportsPage() {
     queryFn: () => fetchTickets(),
     retry: false,
   });
+  const sprintsQuery = useQuery({
+    queryKey: ["sprints"],
+    queryFn: fetchSprints,
+    retry: false,
+  });
+  const timeQuery = useQuery({
+    queryKey: ["reporting", "time"],
+    queryFn: () => fetchTimeReport(),
+    retry: false,
+  });
 
   const projects = projectsQuery.data ?? [];
   const tickets = ticketsQuery.data ?? [];
@@ -165,6 +226,47 @@ export function ReportsPage() {
               </Card>
             </div>
             <MembersTable members={data.members} />
+            <Card>
+              <CardHeader
+                title="Time per sprint"
+                subtitle="Hours logged (ticket entries + daily-update sync) and top members by time"
+              />
+              {sprintsQuery.isPending ? (
+                <p className="p-5 text-sm text-muted">Loading sprints…</p>
+              ) : sprintsQuery.isError ? (
+                <p className="p-5 text-sm text-muted">
+                  Couldn't load sprints — the API didn't answer.
+                </p>
+              ) : (sprintsQuery.data ?? []).length === 0 ? (
+                <p className="p-5 text-sm text-muted">No sprints yet.</p>
+              ) : (
+                <>
+                  <p className="px-5 pt-4 text-sm text-muted">
+                    Workspace total:{" "}
+                    <span className="font-semibold text-ink">
+                      {timeQuery.data ? formatHours(timeQuery.data.totalMinutes) : "…"}
+                    </span>
+                    {timeQuery.data?.byMember[0]
+                      ? ` · Top: ${timeQuery.data.byMember[0].memberName} ${formatHours(timeQuery.data.byMember[0].minutes)}`
+                      : ""}
+                  </p>
+                  <table className="mt-2 w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-line text-xs uppercase text-muted">
+                        <th className="px-5 py-3 font-medium">Sprint</th>
+                        <th className="px-5 py-3 font-medium">Total time</th>
+                        <th className="px-5 py-3 font-medium">Top members</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(sprintsQuery.data ?? []).map((s) => (
+                        <SprintTimeRow key={s.id} sprintId={s.id} name={s.name} />
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </Card>
           </>
         )}
       </main>

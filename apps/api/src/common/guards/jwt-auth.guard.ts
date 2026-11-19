@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Reflector } from "@nestjs/core";
 import { verify } from "jsonwebtoken";
+import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 
 /**
  * JWT guard — LOCAL DEV placeholder, ready for Cognito.
@@ -13,9 +15,17 @@ import { verify } from "jsonwebtoken";
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly reflector: Reflector,
+  ) {}
 
   canActivate(ctx: ExecutionContext): boolean {
+    // Public routes (OAuth callbacks, incoming webhooks) skip auth — they
+    // verify their own signature/state instead (see @Public()).
+    if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [ctx.getHandler(), ctx.getClass()])) {
+      return true;
+    }
     const req = ctx.switchToHttp().getRequest<{
       headers: Record<string, string | undefined>;
       tenantId?: string;

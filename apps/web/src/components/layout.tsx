@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Input } from "./ui";
+import { LiveIndicator } from "./LiveIndicator";
 import { getCurrentUser, logout } from "../lib/authFetch";
 
 const nav = [
@@ -113,6 +114,7 @@ export function TopBar({ title }: { title: string }) {
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-panel px-6 py-4">
       <h1 className="text-lg font-semibold text-ink">{title}</h1>
       <div className="flex items-center gap-3">
+        <LiveIndicator />
         <div className="relative">
           <Search
             size={16}

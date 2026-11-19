@@ -214,6 +214,164 @@ export const updateTicketStatusSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+// --- Automations (Phase 2, trigger → action) ---
+// The catalog is data-driven: adding a trigger/action is one entry here
+// (+ one executor branch in AutomationService). The API validates
+// trigger/action against these enums; the web rule builder renders
+// its dropdowns and per-action config fields from the catalogs below.
+
+export const AUTOMATION_TRIGGERS = [
+  "ticket.created",
+  "ticket.status_changed",
+  "ticket.overdue",
+  "ticket.done",
+  "sprint.completed",
+  "daily_update.created",
+  "comment.created",
+] as const;
+export type AutomationTrigger = (typeof AUTOMATION_TRIGGERS)[number];
+export const automationTriggerSchema = z.enum(AUTOMATION_TRIGGERS);
+
+export const AUTOMATION_ACTIONS = [
+  "slack.post",
+  "github.comment",
+  "notification.create",
+  "ticket.update",
+  "webhook.post",
+] as const;
+export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
+export const automationActionSchema = z.enum(AUTOMATION_ACTIONS);
+
+/** Rule config is free-form JSON; known keys are documented per action
+ *  in AUTOMATION_ACTION_CATALOG. `filters` narrows when a rule fires. */
+export const automationRuleConfigSchema = z
+  .record(z.string(), z.unknown())
+  .default({});
+
+export const createAutomationRuleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    trigger: automationTriggerSchema,
+    action: automationActionSchema,
+    config: automationRuleConfigSchema.optional(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.action === "webhook.post") {
+      const url = (v.config as Record<string, unknown> | undefined)?.["url"];
+      if (typeof url !== "string" || !/^https?:\/\//.test(url)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "webhook.post requires config.url to be an http(s) URL",
+          path: ["config", "url"],
+        });
+      }
+    }
+  });
+
+export const updateAutomationRuleSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  trigger: automationTriggerSchema.optional(),
+  action: automationActionSchema.optional(),
+  config: automationRuleConfigSchema.optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const automationRuleSchema = z.object({
+  id: idSchema,
+  tenantId: tenantIdSchema,
+  name: z.string().min(1).max(100),
+  trigger: automationTriggerSchema,
+  action: automationActionSchema,
+  config: automationRuleConfigSchema,
+  isActive: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type AutomationRule = z.infer<typeof automationRuleSchema>;
+export type CreateAutomationRuleInput = z.infer<typeof createAutomationRuleSchema>;
+export type UpdateAutomationRuleInput = z.infer<typeof updateAutomationRuleSchema>;
+
+export interface AutomationConfigField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+  type?: "text" | "textarea" | "select";
+  options?: { value: string; label: string }[];
+}
+
+export const AUTOMATION_TRIGGER_CATALOG: {
+  trigger: AutomationTrigger;
+  label: string;
+  description: string;
+}[] = [
+  { trigger: "ticket.created", label: "Ticket created", description: "A ticket is created in the workspace." },
+  { trigger: "ticket.status_changed", label: "Ticket status changed", description: "A ticket moves to another workflow column. Narrow with a to-category filter." },
+  { trigger: "ticket.overdue", label: "Ticket overdue / stale", description: "A ticket has no daily update in 3 days (overdue sweep)." },
+  { trigger: "ticket.done", label: "Ticket done", description: "A ticket moves into a Done-category column." },
+  { trigger: "sprint.completed", label: "Sprint completed", description: "A sprint is marked completed." },
+  { trigger: "daily_update.created", label: "Daily update created", description: "A member posts a daily update." },
+  { trigger: "comment.created", label: "Comment created", description: "A comment is posted on a ticket." },
+];
+
+export const AUTOMATION_ACTION_CATALOG: {
+  action: AutomationAction;
+  label: string;
+  description: string;
+  configFields: AutomationConfigField[];
+}[] = [
+  {
+    action: "slack.post",
+    label: "Post to Slack",
+    description: "Post a message to a channel. Skipped with a warning when Slack is not connected.",
+    configFields: [
+      { key: "channel", label: "Channel", placeholder: "#agilytics", hint: "Defaults to SLACK_DEFAULT_CHANNEL when empty." },
+      { key: "template", label: "Message template", placeholder: "Ticket {ticket.key}: {ticket.title}", hint: "Placeholders: {ticket.key} {ticket.title} {trigger} {assigneeId}. Empty = built-in alert.", type: "textarea" },
+    ],
+  },
+  {
+    action: "github.comment",
+    label: "Comment on GitHub PR",
+    description: "Comment on the linked pull request. Needs owner, repo and PR number in the config.",
+    configFields: [
+      { key: "owner", label: "Repo owner", placeholder: "octocat", required: true },
+      { key: "repo", label: "Repository", placeholder: "hello-world", required: true },
+      { key: "prNumber", label: "PR number", placeholder: "12", required: true },
+      { key: "template", label: "Comment template", placeholder: "Ticket {ticket.key} is done.", hint: "Same placeholders as Slack.", type: "textarea" },
+    ],
+  },
+  {
+    action: "notification.create",
+    label: "Create notification",
+    description: "Write an inbox notification for the ticket assignee (or the user in config).",
+    configFields: [
+      { key: "message", label: "Message", placeholder: "Your ticket is overdue — please post an update.", type: "textarea" },
+      { key: "userId", label: "Notify user id (optional)", placeholder: "user id — defaults to the assignee", hint: "Leave empty to notify the ticket assignee." },
+    ],
+  },
+  {
+    action: "ticket.update",
+    label: "Update ticket",
+    description: "Set the ticket's status category, priority and/or assignee.",
+    configFields: [
+      { key: "statusCategory", label: "Move to status category", type: "select", options: [{ value: "", label: "— keep —" }, { value: "TODO", label: "To Do" }, { value: "IN_PROGRESS", label: "In Progress" }, { value: "DONE", label: "Done" }] },
+      { key: "priority", label: "Priority", type: "select", options: [{ value: "", label: "— keep —" }, { value: "LOW", label: "Low" }, { value: "MEDIUM", label: "Medium" }, { value: "HIGH", label: "High" }, { value: "URGENT", label: "Urgent" }] },
+      { key: "assigneeId", label: "Assignee user id (optional)", placeholder: "user id" },
+    ],
+  },
+  {
+    action: "webhook.post",
+    label: "POST to webhook URL",
+    description: "POST the event JSON to any URL — the generic escape hatch (Zapier / Make / anything).",
+    configFields: [
+      { key: "url", label: "Webhook URL", placeholder: "https://hooks.example.com/agilytics", required: true },
+      { key: "template", label: "Message template (optional)", placeholder: "Ticket {ticket.key}: {ticket.title}", hint: "Sent as { text } alongside the event JSON. Empty = event JSON only.", type: "textarea" },
+    ],
+  },
+];
+
 export type Organisation = z.infer<typeof organisationSchema>;
 export type User = z.infer<typeof userSchema>;
 export type Membership = z.infer<typeof membershipSchema>;

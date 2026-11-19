@@ -270,7 +270,59 @@ export async function fetchMembers(): Promise<MemberDirectoryEntry[]> {
   }));
 }
 
-// --- Boards / columns ---
+// --- Time entries ---
+
+export interface TimeEntry {
+  id: string;
+  ticketId: string;
+  memberId: string;
+  date: string;
+  minutes: number;
+  note?: string | null;
+  member?: { id: string; name: string };
+}
+
+export interface TimeTotals {
+  totalMinutes: number;
+  totalHours: number;
+  byMember: { memberId: string; memberName: string; minutes: number }[];
+  byTicket: { ticketId: string; ticketTitle: string; minutes: number }[];
+}
+
+export async function fetchTimeEntries(ticketId: string): Promise<{
+  entries: TimeEntry[];
+  totalMinutes: number;
+}> {
+  return apiJson<{ entries: TimeEntry[]; totalMinutes: number }>(
+    `/tickets/${ticketId}/time-entries`,
+  );
+}
+
+export async function createTimeEntry(
+  ticketId: string,
+  data: { minutes: number; date?: string; note?: string },
+): Promise<TimeEntry> {
+  return apiJson<TimeEntry>(`/tickets/${ticketId}/time-entries`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTimeEntry(ticketId: string, entryId: string): Promise<void> {
+  await apiJson(`/tickets/${ticketId}/time-entries/${entryId}`, { method: "DELETE" });
+}
+
+/** Per-sprint / per-project / workspace-wide time report (GET /reporting/time). */
+export async function fetchTimeReport(filter?: {
+  sprintId?: string;
+  projectId?: string;
+}): Promise<TimeTotals> {
+  const qs = new URLSearchParams();
+  if (filter?.sprintId) qs.set("sprintId", filter.sprintId);
+  if (filter?.projectId) qs.set("projectId", filter.projectId);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiJson<TimeTotals>(`/reporting/time${suffix}`);
+}
 
 export async function createBoard(data: {
   projectId: string;
@@ -302,4 +354,66 @@ export async function updateBoardColumn(
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+// --- Automations (Phase 2, trigger → action) ---
+
+export interface AutomationRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  trigger: string;
+  action: string;
+  /** Rule config JSON: channel/template for slack.post, url for webhook.post, … */
+  config: Record<string, unknown>;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAutomationRuleInput {
+  name: string;
+  trigger: string;
+  action: string;
+  config?: Record<string, unknown>;
+  isActive?: boolean;
+}
+
+export async function fetchAutomations(): Promise<AutomationRule[]> {
+  return apiJson<AutomationRule[]>("/integrations/automations");
+}
+
+export async function createAutomation(data: CreateAutomationRuleInput): Promise<AutomationRule> {
+  return apiJson<AutomationRule>("/integrations/automations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAutomation(
+  id: string,
+  data: Partial<CreateAutomationRuleInput>,
+): Promise<AutomationRule> {
+  return apiJson<AutomationRule>(`/integrations/automations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAutomation(id: string): Promise<void> {
+  await apiJson(`/integrations/automations/${id}`, { method: "DELETE" });
+}
+
+export async function toggleAutomation(id: string): Promise<AutomationRule> {
+  return apiJson<AutomationRule>(`/integrations/automations/${id}/toggle`, { method: "POST" });
+}
+
+export interface AutomationSweepResult {
+  staleTickets: number;
+  evaluated: number;
+  outcomes: { ruleId: string; ruleName: string; action: string; ok: boolean; result: string }[];
+}
+
+export async function runAutomationSweep(): Promise<AutomationSweepResult> {
+  return apiJson<AutomationSweepResult>("/integrations/automations/sweep", { method: "POST" });
 }

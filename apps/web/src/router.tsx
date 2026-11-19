@@ -10,6 +10,7 @@ import { Sidebar } from "./components/layout";
 import { RequirePlatformAdmin } from "./components/RequirePlatformAdmin";
 import { isAuthenticated } from "./lib/authFetch";
 import { AdminPage } from "./pages/AdminPage";
+import { ConnectionsCallbackPage } from "./pages/ConnectionsCallbackPage";
 import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { HomePage } from "./pages/HomePage";
 import { InboxPage } from "./pages/InboxPage";
@@ -94,6 +95,11 @@ const connectionsRoute = createRoute({
   path: "/connections",
   component: ConnectionsPage,
 });
+const connectionsCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/connections/callback",
+  component: ConnectionsCallbackPage,
+});
 const workflowsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/workflows",
@@ -128,6 +134,7 @@ const routeTree = rootRoute.addChildren([
   boardsRoute,
   membersRoute,
   connectionsRoute,
+  connectionsCallbackRoute,
   workflowsRoute,
   rolesRoute,
   inboxRoute,

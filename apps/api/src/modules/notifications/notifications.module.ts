@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { RealtimeModule } from "../realtime/realtime.module";
 import { NotificationsController } from "./notifications.controller";
 import { NotificationsService } from "./notifications.service";
 
@@ -10,6 +11,7 @@ import { NotificationsService } from "./notifications.service";
  * the write path.
  */
 @Module({
+  imports: [RealtimeModule],
   controllers: [NotificationsController],
   providers: [NotificationsService, PrismaService],
   exports: [NotificationsService],

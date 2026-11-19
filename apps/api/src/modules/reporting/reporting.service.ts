@@ -1,13 +1,22 @@
 import { Injectable } from "@nestjs/common";
 import type { DashboardSummary, Member, TodayFeed, VelocityPoint } from "@agilytics/shared";
 import { PrismaService } from "../../prisma/prisma.service";
+import { TimeEntriesService, type TimeTotals, type TimeTotalsFilter } from "../tickets/time-entries.service";
 
 /** A ticket counts as stale when it is not done and nobody updated it in 3 days. */
 const STALE_AFTER_DAYS = 3;
 
 @Injectable()
 export class ReportingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly timeEntries: TimeEntriesService,
+  ) {}
+
+  /** Time totals — GET /reporting/time?sprintId=&projectId=. Delegates to TimeEntriesService. */
+  timeTotals(tenantId: string, filter: TimeTotalsFilter): Promise<TimeTotals> {
+    return this.timeEntries.totals(tenantId, filter);
+  }
 
   async dashboardSummary(tenantId: string): Promise<DashboardSummary> {
     const [activeProjects, tickets, memberships] = await Promise.all([

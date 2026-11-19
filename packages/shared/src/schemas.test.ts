@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createSprintSchema, createTicketSchema } from "./schemas";
+import {
+  createAutomationRuleSchema,
+  createSprintSchema,
+  createTicketSchema,
+} from "./schemas";
 
 describe("shared schemas", () => {
   it("rejects a sprint whose end is before its start", () => {
@@ -20,5 +24,46 @@ describe("shared schemas", () => {
       estimate: 101,
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("automation rule schemas", () => {
+  it("accepts a valid rule", () => {
+    expect(
+      createAutomationRuleSchema.safeParse({
+        name: "Done → Slack",
+        trigger: "ticket.done",
+        action: "slack.post",
+        config: { channel: "#agilytics" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects unknown trigger / action", () => {
+    expect(
+      createAutomationRuleSchema.safeParse({
+        name: "x",
+        trigger: "ticket.exploded",
+        action: "slack.post",
+      }).success,
+    ).toBe(false);
+    expect(
+      createAutomationRuleSchema.safeParse({
+        name: "x",
+        trigger: "ticket.done",
+        action: "carrier.pigeon",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects webhook.post without an http(s) url", () => {
+    expect(
+      createAutomationRuleSchema.safeParse({
+        name: "x",
+        trigger: "ticket.done",
+        action: "webhook.post",
+        config: {},
+      }).success,
+    ).toBe(false);
   });
 });
