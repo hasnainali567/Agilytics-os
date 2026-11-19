@@ -1,24 +1,63 @@
-import { Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import {
+  Outlet,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router";
 import { Sidebar } from "./components/layout";
 import { RequirePlatformAdmin } from "./components/RequirePlatformAdmin";
+import { isAuthenticated } from "./lib/authFetch";
 import { AdminPage } from "./pages/AdminPage";
 import { ConnectionsPage } from "./pages/ConnectionsPage";
 import { HomePage } from "./pages/HomePage";
 import { InboxPage } from "./pages/InboxPage";
+import { LoginPage } from "./pages/LoginPage";
+import { MembersPage } from "./pages/MembersPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { RolesPage } from "./pages/RolesPage";
+import { SprintsPage } from "./pages/SprintsPage";
 import { TicketBoardPage } from "./pages/TicketBoardPage";
 import { WorkflowSettingsPage } from "./pages/WorkflowSettingsPage";
-import { PlaceholderPage, ReportsPage } from "./pages/ReportsPage";
 
 const rootRoute = createRootRoute({
-  component: () => (
-    <div className="flex min-h-screen bg-canvas">
-      <Sidebar />
-      <div className="flex-1">
-        <Outlet />
+  // Guard every route: no stored token means back to /login. The login
+  // route itself is exempt so it can never redirect to itself.
+  beforeLoad: ({ location }) => {
+    if (location.pathname === "/login") return;
+    if (!isAuthenticated()) {
+      throw redirect({ to: "/login" });
+    }
+  },
+  component: function Root() {
+    const pathname = useRouterState({ select: (s) => s.location.pathname });
+    // The login page renders outside the sidebar shell.
+    if (pathname === "/login") {
+      return <Outlet />;
+    }
+    return (
+      <div className="flex min-h-screen bg-canvas">
+        <Sidebar />
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </div>
-    </div>
-  ),
+    );
+  },
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  // Already signed in — no need to see the login form again.
+  beforeLoad: () => {
+    if (isAuthenticated()) {
+      throw redirect({ to: "/" });
+    }
+  },
+  component: LoginPage,
 });
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
@@ -30,17 +69,22 @@ const reportsRoute = createRoute({
 const projectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects",
-  component: () => <PlaceholderPage title="Projects" />,
+  component: ProjectsPage,
 });
 const sprintsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sprints",
+  component: SprintsPage,
+});
+const boardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/boards",
   component: TicketBoardPage,
 });
 const membersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/members",
-  component: () => <PlaceholderPage title="Members" />,
+  component: MembersPage,
 });
 const connectionsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -73,10 +117,12 @@ const adminRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  loginRoute,
   indexRoute,
   reportsRoute,
   projectsRoute,
   sprintsRoute,
+  boardsRoute,
   membersRoute,
   connectionsRoute,
   workflowsRoute,

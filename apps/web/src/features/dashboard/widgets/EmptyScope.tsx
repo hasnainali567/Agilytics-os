@@ -13,7 +13,7 @@ export function hasScope(config: WidgetConfig): boolean {
 
 export function EmptyScope({ onClearScope }: { onClearScope: () => void }) {
   return (
-    <div className="flex h-full flex-col items-start justify-center gap-2 p-5 text-sm">
+    <div className="flex flex-col items-start justify-center gap-2 p-5 text-sm">
       <p className="font-semibold text-ink">No data for this scope yet</p>
       <p className="text-muted">
         This widget is scoped to a project, sprint or team, but the reporting API only returns
@@ -22,7 +22,7 @@ export function EmptyScope({ onClearScope }: { onClearScope: () => void }) {
       <button
         type="button"
         onClick={onClearScope}
-        className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-white"
+        className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-white hover:bg-forest/90"
       >
         Clear scope — show workspace data
       </button>

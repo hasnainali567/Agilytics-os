@@ -16,20 +16,21 @@ export function BlockersWidget({ summary, config, onClearScope }: WidgetProps) {
   return (
     <div className="space-y-3 p-5 text-sm">
       {today.openBlockers > 0 && (
-        <p>
+        <p className="flex items-center gap-2">
           <span className="inline-flex rounded-full bg-forest px-2.5 py-0.5 text-xs font-medium text-white">
             {today.openBlockers} open blocker{today.openBlockers === 1 ? "" : "s"}
-          </span>{" "}
+          </span>
           <span className="text-muted">reported in today&apos;s daily updates.</span>
         </p>
       )}
       {today.staleTickets.length > 0 && (
         <div>
           <p className="font-medium text-ink">Stale — no update in 3+ days:</p>
-          <ul className="mt-1 space-y-1.5">
+          <ul className="mt-2 space-y-1.5">
             {today.staleTickets.map((t) => (
-              <li key={t.id} className="rounded-xl bg-pill px-3 py-2 text-muted">
-                {t.title} — {t.daysStale} days stale
+              <li key={t.id} className="rounded-inner bg-pill px-3 py-2 text-muted">
+                {t.title} —{" "}
+                <span className="tabular-nums text-warn">{t.daysStale} days stale</span>
               </li>
             ))}
           </ul>

@@ -15,7 +15,7 @@ export function VelocityWidget({ summary, config, onClearScope }: WidgetProps) {
     );
   }
   return (
-    <div className="space-y-3 p-5" role="list" aria-label="Velocity by week">
+    <div className="space-y-3.5 p-5" role="list" aria-label="Velocity by week">
       {weeks.map((point) => {
         const pct =
           point.planned > 0
@@ -25,12 +25,12 @@ export function VelocityWidget({ summary, config, onClearScope }: WidgetProps) {
           <div key={point.week} role="listitem">
             <div className="flex items-baseline justify-between text-sm">
               <span className="font-medium text-ink">{point.week}</span>
-              <span className="text-muted tabular-nums">
-                {point.completed} / {point.planned} pts · {pct}%
+              <span className="tabular-nums text-muted">
+                {`${point.completed} / ${point.planned} pts · ${pct}%`}
               </span>
             </div>
             <div
-              className="mt-1 h-2.5 w-full rounded-full bg-track"
+              className="mt-1.5 h-3 w-full rounded-full bg-track"
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}

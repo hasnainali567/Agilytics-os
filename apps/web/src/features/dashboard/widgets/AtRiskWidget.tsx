@@ -11,9 +11,24 @@ export function AtRiskWidget({ summary, config, onClearScope }: WidgetProps) {
   return (
     <ul className="space-y-3 p-5 text-sm">
       {atRisk.map((m) => (
-        <li key={m.id} className="rounded-2xl border border-line bg-panel p-3">
-          <p className="font-medium text-ink">{m.name}</p>
-          <p className="text-xs text-muted">
+        <li key={m.id} className="rounded-inner bg-pill p-4">
+          <p className="flex items-center gap-2 font-medium text-ink">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                m.status === "OVERLOADED" ? "bg-risk" : "bg-warn"
+              }`}
+              aria-hidden
+            />
+            {m.name}
+            <span
+              className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                m.status === "OVERLOADED" ? "bg-risk/10 text-risk" : "bg-warn/10 text-warn"
+              }`}
+            >
+              {m.status === "OVERLOADED" ? "Over capacity" : "At risk"}
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-muted">
             {m.activeTickets} active tickets, {m.completedPoints} points done —{" "}
             {m.status === "OVERLOADED" ? "over capacity" : "falling behind"}
           </p>

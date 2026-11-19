@@ -1,11 +1,11 @@
 import { NOTIFICATION_TYPE_LABELS, type NotificationItem } from "./notifications.api";
 
 const TYPE_STYLES: Record<NotificationItem["type"], string> = {
-  MENTION: "bg-blue-100 text-blue-800",
-  ASSIGNMENT: "bg-green-100 text-green-800",
-  BLOCKER: "bg-red-100 text-red-800",
-  AUTOMATION: "bg-amber-100 text-amber-800",
-  SYSTEM: "bg-gray-100 text-gray-700",
+  MENTION: "bg-lime-light text-forest",
+  ASSIGNMENT: "bg-done/10 text-done",
+  BLOCKER: "bg-risk/10 text-risk",
+  AUTOMATION: "bg-warn/10 text-warn",
+  SYSTEM: "bg-pill text-muted",
 };
 
 export function NotificationList({

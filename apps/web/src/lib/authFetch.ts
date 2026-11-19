@@ -1,96 +1,105 @@
 import { apiUrl } from "./query-client";
 
 /**
- * Authenticated fetch for the web app — DEV ONLY until Cognito lands.
+ * Authenticated fetch for the web app — NO auto-login.
  *
- * Every API endpoint is behind JwtAuthGuard, but the web app sent no
- * Authorization header at all, so every call 401'd and the dashboard
- * showed "The API isn't reachable" even though the API was up (the
- * public /health endpoint worked, which is what made this confusing).
+ * The session is created explicitly by the login page: it POSTs to the
+ * API's DEV-ONLY /auth/dev-login endpoint and stores the returned JWT in
+ * localStorage. This module only ever *reads* that stored token — it never
+ * calls dev-login itself, so an unauthenticated user is never silently
+ * logged in as the demo user.
  *
- * Until Cognito is wired, this obtains a local JWT from the API's
- * DEV-ONLY POST /auth/dev-login endpoint (user demo-user, tenant
- * demo-tenant — the seeded demo org) and attaches it as a Bearer token.
- * The token is cached in memory and refreshed once on 401. When
- * Cognito env vars are set, dev-login is skipped and a stored token
- * from localStorage is used instead.
+ * When Cognito lands, the login page will store a Cognito token under the
+ * same key and this module needs no change. Until then the stored token
+ * is a dev JWT (1h expiry, signed with the API's JWT_SECRET).
  */
 
-const TOKEN_KEY = "agilytics.accessToken";
-const DEV_USER_ID = "demo-user";
-const DEV_TENANT_ID =
-  (import.meta.env.VITE_DEV_TENANT_ID as string | undefined) ?? "demo-tenant";
+export const TOKEN_KEY = "agilytics.accessToken";
+export const USER_KEY = "agilytics.user";
 
-let cachedToken: string | null = null;
-let cachedUntil = 0;
-
-function cognitoConfigured(): boolean {
-  return Boolean(import.meta.env.VITE_COGNITO_USER_POOL_ID);
+export interface StoredUser {
+  userId: string;
+  email: string;
+  name: string;
+  role: string;
+  tenantId: string;
 }
 
-async function devLogin(): Promise<string> {
-  const res = await fetch(`${apiUrl}/auth/dev-login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: DEV_USER_ID, tenantId: DEV_TENANT_ID }),
-  });
-  if (!res.ok) {
-    throw new Error(`Dev login failed: ${res.status}`);
-  }
-  const data = (await res.json()) as { accessToken: string; expiresIn?: number };
-  cachedToken = data.accessToken;
-  cachedUntil = Date.now() + ((data.expiresIn ?? 3600) - 60) * 1000;
+/** Read the stored token from localStorage only. Returns null when logged out. */
+export function getToken(): string | null {
   try {
-    localStorage.setItem(TOKEN_KEY, cachedToken);
+    return localStorage.getItem(TOKEN_KEY);
   } catch {
-    // localStorage unavailable (SSR/tests) — memory cache is enough.
+    return null;
   }
-  return cachedToken;
 }
 
-async function getToken(): Promise<string | null> {
-  if (cognitoConfigured()) {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch {
+export function isAuthenticated(): boolean {
+  return getToken() !== null;
+}
+
+/** The user saved at login time, or null when logged out / corrupt. */
+export function getCurrentUser(): StoredUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredUser;
+    if (!parsed || typeof parsed.userId !== "string" || typeof parsed.email !== "string") {
       return null;
     }
-  }
-  if (cachedToken && Date.now() < cachedUntil) return cachedToken;
-  try {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      cachedToken = stored;
-      cachedUntil = Date.now() + 50 * 60 * 1000;
-      return stored;
-    }
+    return parsed;
   } catch {
-    // fall through to dev-login
+    return null;
   }
-  return devLogin();
+}
+
+/** Persist a session after a successful login. Called by LoginPage only. */
+export function storeSession(accessToken: string, user: StoredUser): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // localStorage unavailable — the session just won't survive a reload.
+  }
+}
+
+/** Clear the stored session (token + user). */
+export function logout(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } catch {
+    // Nothing stored, or localStorage unavailable — already logged out.
+  }
+}
+
+function clearSessionAndGoToLogin(): void {
+  logout();
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
 }
 
 function resolveUrl(urlOrPath: string): string {
   return urlOrPath.startsWith("http") ? urlOrPath : `${apiUrl}${urlOrPath}`;
 }
 
-/** Drop-in replacement for fetch() against the API — adds the Bearer token. */
+/**
+ * Drop-in replacement for fetch() against the API — adds the Bearer token
+ * when one is stored. Never logs in on its own: with no token the request
+ * goes out unauthenticated, and a 401 clears the session and sends the
+ * browser to /login instead of retrying.
+ */
 export async function apiFetch(urlOrPath: string, init?: RequestInit): Promise<Response> {
-  const token = await getToken();
+  const token = getToken();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string> | undefined),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  let res = await fetch(resolveUrl(urlOrPath), { ...init, headers });
-  if (res.status === 401 && !cognitoConfigured()) {
-    // Token expired or rejected — log in once more and retry a single time.
-    cachedToken = null;
-    cachedUntil = 0;
-    const retryToken = await devLogin();
-    res = await fetch(resolveUrl(urlOrPath), {
-      ...init,
-      headers: { ...headers, Authorization: `Bearer ${retryToken}` },
-    });
+  const res = await fetch(resolveUrl(urlOrPath), { ...init, headers });
+  if (res.status === 401) {
+    // Token expired, rejected, or never existed — force a fresh login.
+    clearSessionAndGoToLogin();
   }
   return res;
 }

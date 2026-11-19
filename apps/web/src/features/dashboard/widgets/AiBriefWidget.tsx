@@ -9,8 +9,9 @@ import { EmptyScope, hasScope } from "./EmptyScope";
 export function AiBriefWidget({ config, onClearScope }: WidgetProps) {
   if (hasScope(config)) return <EmptyScope onClearScope={onClearScope} />;
   return (
-    <div className="flex h-full flex-col items-start justify-center gap-2 p-5 text-sm">
-      <span className="inline-flex rounded-full bg-forest px-2.5 py-0.5 text-xs font-medium text-white">
+    <div className="flex flex-col items-start justify-center gap-2 p-5 text-sm">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-forest px-2.5 py-0.5 text-xs font-medium text-white">
+        <span className="h-1.5 w-1.5 rounded-full bg-lime" aria-hidden />
         AI BRIEF · PHASE 3
       </span>
       <p className="font-semibold text-ink">Your daily brief will live here</p>

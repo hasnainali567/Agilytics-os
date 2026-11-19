@@ -8,12 +8,11 @@ import { Button, Card, CardHeader } from "../../components/ui";
  * Roles & Permissions matrix (decision 21) + role dropdown.
  *
  * API helpers live here (not in lib/api.ts — that file belongs to
- * another slice). They follow the existing web pattern: plain fetch
- * against `apiUrl`, no mock data. NOTE: like the rest of the web app,
- * these calls do not yet attach an auth token — Cognito wiring is
- * still a TODO (see lib/auth.ts); the API's PermissionsGuard is the
- * enforcement point, so a request without a valid JWT is denied
- * server-side regardless of what this UI shows.
+ * another slice). They follow the existing web pattern: apiFetch
+ * against `apiUrl`, with the stored Bearer token attached. The API's
+ * PermissionsGuard is the enforcement point, so a request without a
+ * valid JWT (or without ROLES_MANAGE) is denied server-side regardless
+ * of what this UI shows.
  */
 
 export interface RoleSummary {
@@ -297,7 +296,7 @@ export function RolesMatrix() {
                             disabled={save.isPending}
                             onClick={() => toggle(role, perm.key)}
                             className={`inline-flex h-6 w-11 items-center rounded-full px-0.5 transition-colors disabled:opacity-50 ${
-                              granted ? "bg-primary-600" : "bg-gray-300"
+                              granted ? "bg-forest" : "bg-line"
                             }`}
                           >
                             <span

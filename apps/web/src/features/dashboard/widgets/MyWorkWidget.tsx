@@ -19,24 +19,30 @@ export function MyWorkWidget({ summary, config, onClearScope }: WidgetProps) {
         expose yet — showing workspace work that needs attention instead.
       </p>
       <ul className="space-y-2">
-        <li className="flex justify-between rounded-xl bg-pill px-3 py-2">
+        <li className="flex items-center justify-between rounded-inner bg-pill px-3 py-2.5">
           <span className="font-medium text-ink">Overdue tickets</span>
-          <span className="tabular-nums text-risk">{kpis.overdueTickets}</span>
+          <span className="rounded-full bg-risk/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-risk">
+            {kpis.overdueTickets}
+          </span>
         </li>
-        <li className="flex justify-between rounded-xl bg-pill px-3 py-2">
+        <li className="flex items-center justify-between rounded-inner bg-pill px-3 py-2.5">
           <span className="font-medium text-ink">Open blockers today</span>
-          <span className="tabular-nums text-risk">{today.openBlockers}</span>
+          <span className="rounded-full bg-risk/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-risk">
+            {today.openBlockers}
+          </span>
         </li>
-        <li className="flex justify-between rounded-xl bg-pill px-3 py-2">
+        <li className="flex items-center justify-between rounded-inner bg-pill px-3 py-2.5">
           <span className="font-medium text-ink">Stale tickets (3+ days)</span>
-          <span className="tabular-nums text-ink">{today.staleTickets.length}</span>
+          <span className="rounded-full bg-lime px-2.5 py-0.5 text-xs font-semibold tabular-nums text-forest">
+            {today.staleTickets.length}
+          </span>
         </li>
       </ul>
       {today.staleTickets.length > 0 && (
-        <ul className="list-disc pl-5 text-muted">
+        <ul className="space-y-1.5">
           {today.staleTickets.slice(0, 5).map((t) => (
-            <li key={t.id}>
-              {t.title} — {t.daysStale} days
+            <li key={t.id} className="rounded-inner bg-pill px-3 py-2 text-muted">
+              {t.title} — <span className="tabular-nums text-warn">{t.daysStale} days</span>
             </li>
           ))}
         </ul>

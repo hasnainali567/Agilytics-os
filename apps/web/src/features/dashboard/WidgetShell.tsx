@@ -41,9 +41,9 @@ export function WidgetShell({
         zIndex: isDragging ? 10 : undefined,
         opacity: isDragging ? 0.85 : undefined,
       }}
-      className="flex flex-col overflow-hidden rounded-card border border-line bg-panel"
+      className="flex flex-col rounded-card border border-line bg-panel"
     >
-      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-line px-5 py-3">
         {editing && (
           <button
             type="button"
@@ -55,7 +55,7 @@ export function WidgetShell({
             ⠿
           </button>
         )}
-        <h3 className="flex-1 truncate text-[15px] font-semibold text-ink">{title}</h3>
+        <h3 className="flex-1 truncate text-sm font-semibold text-ink">{title}</h3>
         {editing && (
           <div className="flex items-center gap-1">
             <button

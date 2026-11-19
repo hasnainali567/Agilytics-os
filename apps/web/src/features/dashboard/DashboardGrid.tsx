@@ -61,7 +61,12 @@ export function DashboardGrid({
   }
 
   const configuring = layout.widgets.find((w) => w.id === configuringId) ?? null;
-  const rowHeight = layout.ui.density === "compact" ? "104px" : "128px";
+  // Rows size to content: a 1-row KPI widget (shell header + number +
+  // trend pill) needs ~180px, far more than a fixed 128px row, so a
+  // fixed gridAutoRows clipped it (overflow-hidden in WidgetShell).
+  // minmax keeps the row minimum for resize math but lets rows grow
+  // to fit their content — cards never clip.
+  const rowMin = layout.ui.density === "compact" ? "104px" : "128px";
 
   return (
     <section aria-label="My dashboard">
@@ -77,7 +82,7 @@ export function DashboardGrid({
             value={addType}
             onChange={(e) => setAddType(e.target.value as WidgetType)}
             aria-label="Widget type to add"
-            className="rounded-full border border-line bg-panel px-3 py-2 text-sm"
+            className="rounded-full border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest"
           >
             {Object.entries(WIDGET_REGISTRY).map(([type, def]) => (
               <option key={type} value={type}>
@@ -88,7 +93,7 @@ export function DashboardGrid({
           <button
             type="button"
             onClick={() => layoutApi.addWidget(addType)}
-            className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-white"
+            className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-white hover:bg-forest/90"
           >
             + Add widget
           </button>
@@ -98,7 +103,7 @@ export function DashboardGrid({
               if (e.target.value) layoutApi.applyTemplate(e.target.value as RoleTemplate);
             }}
             aria-label="Apply a role template"
-            className="rounded-full border border-line bg-panel px-3 py-2 text-sm"
+            className="rounded-full border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest"
           >
             <option value="">Apply template…</option>
             <option value="manager">Manager</option>
@@ -119,7 +124,7 @@ export function DashboardGrid({
       )}
 
       <DndContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-12 gap-4" style={{ gridAutoRows: rowHeight }}>
+        <div className="grid grid-cols-12 gap-4" style={{ gridAutoRows: `minmax(${rowMin}, auto)` }}>
           {layout.widgets.map((placement) => {
             const def = WIDGET_REGISTRY[placement.type];
             const Widget = def.component;

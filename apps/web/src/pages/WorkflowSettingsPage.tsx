@@ -1,15 +1,181 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../components/layout";
-import { Card, CardHeader } from "../components/ui";
-import { fetchBoards } from "../lib/api";
+import { Button, Card, CardHeader } from "../components/ui";
+import {
+  addBoardColumn,
+  fetchBoards,
+  updateBoardColumn,
+  type BoardWithColumns,
+} from "../lib/api";
+
+const inputCls =
+  "rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest";
+
+type Category = "TODO" | "IN_PROGRESS" | "DONE";
+
+const CATEGORY_LABELS: Record<Category, string> = {
+  TODO: "To do",
+  IN_PROGRESS: "In progress",
+  DONE: "Done",
+};
+
+/** Add-column form for one board — POST /boards/:id/columns. */
+function AddColumnForm({ boardId }: { boardId: string }) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<Category>("TODO");
+  const [colour, setColour] = useState("#64748B");
+  const [error, setError] = useState<string | null>(null);
+
+  const add = useMutation({
+    mutationFn: () => addBoardColumn(boardId, { name: name.trim(), category, colour }),
+    onSuccess: () => {
+      setName("");
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        if (!name.trim()) {
+          setError("Give the column a name.");
+          return;
+        }
+        add.mutate();
+      }}
+    >
+      <label className="block text-sm">
+        <span className="font-medium text-ink">New column</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Blocked"
+          className={`${inputCls} mt-1 w-48`}
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="font-medium text-ink">Reporting category</span>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as Category)}
+          className={`${inputCls} mt-1 w-40`}
+          aria-label="Reporting category"
+        >
+          {(Object.keys(CATEGORY_LABELS) as Category[]).map((c) => (
+            <option key={c} value={c}>
+              {CATEGORY_LABELS[c]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-sm">
+        <span className="font-medium text-ink">Colour</span>
+        <input
+          type="color"
+          value={colour}
+          onChange={(e) => setColour(e.target.value)}
+          className="mt-1 block h-9 w-14 rounded-lg border border-line bg-panel px-1"
+          aria-label="Column colour"
+        />
+      </label>
+      <Button>Add column</Button>
+      {error ? <p className="w-full text-sm text-red-700">{error}</p> : null}
+    </form>
+  );
+}
+
+/** One board with its columns — rename inline, add a column below. */
+function BoardCard({ board }: { board: BoardWithColumns }) {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const rename = useMutation({
+    mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
+      updateBoardColumn(board.id, columnId, { name }),
+    onSuccess: () => {
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+    },
+  });
+
+  return (
+    <Card key={board.id}>
+      <CardHeader
+        title={board.name}
+        subtitle={board.isDefault ? "Default board" : "Board"}
+      />
+      <ul className="space-y-2 p-5 text-sm">
+        {board.columns.map((c) => (
+          <li key={c.id} className="flex items-center gap-2">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ background: c.colour }}
+            />
+            {editingId === c.id ? (
+              <>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="rounded-lg border border-line px-2 py-1 text-sm outline-none"
+                  aria-label="Column name"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => rename.mutate({ columnId: c.id, name: editName.trim() })}
+                >
+                  Save
+                </Button>
+                <Button variant="secondary" onClick={() => setEditingId(null)}>
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="font-medium">{c.name}</span>
+                <span className="text-muted">
+                  · {c.category.replaceAll("_", " ").toLowerCase()} · order {c.order}
+                </span>
+                <span className="ml-auto">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setEditingId(c.id);
+                      setEditName(c.name);
+                    }}
+                  >
+                    Rename
+                  </Button>
+                </span>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {rename.isError ? (
+        <p className="border-t border-line bg-red-50 px-5 py-3 text-sm text-red-800">
+          Couldn't rename that column — {rename.error?.message ?? "the API refused it"}.
+        </p>
+      ) : null}
+      <AddColumnForm boardId={board.id} />
+    </Card>
+  );
+}
 
 /**
- * Workflow settings (stub) — how a workspace admin sees their boards.
+ * Workflow settings — how a workspace admin sees their boards.
  * Boards and columns are unlimited and fully editable by the workspace
- * admin / company head (NOT the platform admin): rename, reorder, add,
- * remove. Column names are free text; the category is what reporting
- * reads. Mutations live in the API (PATCH/DELETE /boards/…) — this page
- * is read-only until the edit UI lands. See docs/WORKFLOWS.md.
+ * admin / company head (NOT the platform admin): rename, add, remove.
+ * Column names are free text; the category is what reporting reads.
+ * Mutations live in the API (POST/PATCH/DELETE /boards/…) — see
+ * docs/WORKFLOWS.md.
  */
 export function WorkflowSettingsPage() {
   const { data, isPending, isError } = useQuery({
@@ -26,7 +192,7 @@ export function WorkflowSettingsPage() {
           <p className="font-semibold">Custom workflows — owned by your company, not by us.</p>
           <p className="mt-1 text-muted">
             Every project gets a default board (Backlog / To Do / In Progress / Review / Done). Your
-            workspace admin can create more boards, and rename, reorder, add or remove any status —
+            workspace admin can create more boards, and rename, add or remove any status —
             names have no restrictions. Only the category (to do / in progress / done) drives
             reporting, so dashboards keep working whatever you call things.
           </p>
@@ -42,28 +208,7 @@ export function WorkflowSettingsPage() {
             No boards yet — create a project and its default board appears here.
           </Card>
         ) : (
-          data.map((board) => (
-            <Card key={board.id}>
-              <CardHeader
-                title={board.name}
-                subtitle={board.isDefault ? "Default board" : "Board"}
-              />
-              <ul className="space-y-2 p-5 text-sm">
-                {board.columns.map((c) => (
-                  <li key={c.id} className="flex items-center gap-2">
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-full"
-                      style={{ background: c.colour }}
-                    />
-                    <span className="font-medium">{c.name}</span>
-                    <span className="text-muted">
-                      · {c.category.replaceAll("_", " ").toLowerCase()} · order {c.order}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))
+          data.map((board) => <BoardCard key={board.id} board={board} />)
         )}
       </main>
     </div>

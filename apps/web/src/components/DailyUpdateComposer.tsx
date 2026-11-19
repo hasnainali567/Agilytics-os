@@ -118,7 +118,7 @@ export function DailyUpdateComposer({ tickets }: { tickets: { id: string; title:
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {save.isPending ? "Saving…" : "Save today's update"}
           </button>

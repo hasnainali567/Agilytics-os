@@ -1,15 +1,115 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Member } from "@agilytics/shared";
 import { TopBar } from "../components/layout";
 import { Card, CardHeader } from "../components/ui";
+import { MembersTable } from "../components/MembersTable";
 import { VelocityChart } from "../components/VelocityChart";
-import { fetchDashboardSummary } from "../lib/api";
+import { fetchDashboardSummary, fetchProjects, fetchTickets } from "../lib/api";
 
-/** Reports page — Pin 3 DealDeck layout. Real data from the reporting API. */
+const SEGMENT_COLORS = ["#a3e635", "#0f3d20", "#1fa463", "#ff6a2b", "#c0ee7e", "#8a8f8a"];
+
+/** Workload donut — active tickets per member, from the dashboard summary. */
+function WorkloadDonut({ members }: { members: Member[] }) {
+  const active = members.filter((m) => m.activeTickets > 0);
+  const total = active.reduce((sum, m) => sum + m.activeTickets, 0);
+  if (total === 0) {
+    return (
+      <Card>
+        <CardHeader title="Workload" subtitle="Active tickets per member" />
+        <p className="p-5 text-sm text-muted">
+          No active tickets assigned right now — workload appears once work is assigned.
+        </p>
+      </Card>
+    );
+  }
+  const radius = 52;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  return (
+    <Card>
+      <CardHeader title="Workload" subtitle="Active tickets per member" />
+      <div className="flex flex-wrap items-center gap-5 p-5">
+        <div
+          className="relative h-32 w-32 shrink-0"
+          role="img"
+          aria-label={`${total} active tickets across ${active.length} members`}
+        >
+          <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90">
+            <circle cx="64" cy="64" r={radius} fill="none" stroke="#e3e6e3" strokeWidth="16" />
+            {active.map((m, i) => {
+              const fraction = m.activeTickets / total;
+              const dash = fraction * circumference;
+              const el = (
+                <circle
+                  key={m.id}
+                  cx="64"
+                  cy="64"
+                  r={radius}
+                  fill="none"
+                  stroke={SEGMENT_COLORS[i % SEGMENT_COLORS.length]}
+                  strokeWidth="16"
+                  strokeDasharray={`${dash} ${circumference - dash}`}
+                  strokeDashoffset={-offset}
+                />
+              );
+              offset += dash;
+              return el;
+            })}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-semibold tabular-nums text-ink">{total}</span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              active
+            </span>
+          </div>
+        </div>
+        <ul className="min-w-36 flex-1 space-y-2 text-sm">
+          {active.slice(0, 6).map((m, i) => (
+            <li key={m.id} className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }}
+              />
+              <span className="font-medium text-ink">{m.name}</span>
+              <span className="ml-auto text-muted">
+                {m.activeTickets} ticket{m.activeTickets === 1 ? "" : "s"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
+/** Reports page — real data from the reporting API plus ticket counts
+ *  grouped per project. No placeholder sections. */
 export function ReportsPage() {
   const { data, isPending, isError } = useQuery({
     queryKey: ["dashboard", "summary"],
     queryFn: fetchDashboardSummary,
     retry: false,
+  });
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
+    retry: false,
+  });
+  const ticketsQuery = useQuery({
+    queryKey: ["tickets"],
+    queryFn: () => fetchTickets(),
+    retry: false,
+  });
+
+  const projects = projectsQuery.data ?? [];
+  const tickets = ticketsQuery.data ?? [];
+  const counts = projects.map((p) => {
+    const mine = tickets.filter((t) => t.projectId === p.id);
+    return {
+      project: p,
+      total: mine.length,
+      done: mine.filter((t) => t.status?.category === "DONE").length,
+    };
   });
 
   return (
@@ -23,30 +123,50 @@ export function ReportsPage() {
             Reports need the API running — see the Home page for how to start it.
           </Card>
         ) : (
-          <VelocityChart data={data.velocity} />
+          <>
+            <VelocityChart data={data.velocity} />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <WorkloadDonut members={data.members} />
+              <Card>
+                <CardHeader title="Tickets per project" subtitle="Open vs done by board category" />
+                {ticketsQuery.isPending || projectsQuery.isPending ? (
+                  <p className="p-5 text-sm text-muted">Loading ticket counts…</p>
+                ) : ticketsQuery.isError || projectsQuery.isError ? (
+                  <p className="p-5 text-sm text-muted">
+                    Couldn't load ticket counts — the API didn't answer.
+                  </p>
+                ) : counts.length === 0 ? (
+                  <p className="p-5 text-sm text-muted">No projects yet.</p>
+                ) : (
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-line text-xs uppercase text-muted">
+                        <th className="px-5 py-3 font-medium">Project</th>
+                        <th className="px-5 py-3 font-medium">Total</th>
+                        <th className="px-5 py-3 font-medium">Done</th>
+                        <th className="px-5 py-3 font-medium">Open</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {counts.map(({ project, total, done }) => (
+                        <tr key={project.id} className="border-b border-line last:border-0">
+                          <td className="px-5 py-3">
+                            <p className="font-medium text-ink">{project.name}</p>
+                            <p className="text-xs text-muted">{project.key}</p>
+                          </td>
+                          <td className="px-5 py-3">{total}</td>
+                          <td className="px-5 py-3">{done}</td>
+                          <td className="px-5 py-3">{total - done}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </Card>
+            </div>
+            <MembersTable members={data.members} />
+          </>
         )}
-        <Card>
-          <CardHeader title="Weekly report" subtitle="Rebuilt on the v2 API in Phase 2" />
-          <p className="p-5 text-sm text-muted">
-            Per-project and per-member reports, burndown, and export will live here.
-          </p>
-        </Card>
-      </main>
-    </div>
-  );
-}
-
-export function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex min-h-screen flex-col">
-      <TopBar title={title} />
-      <main className="p-6">
-        <Card>
-          <CardHeader title={title} subtitle="Placeholder — built in a later slice" />
-          <p className="p-5 text-sm text-muted">
-            This section is intentionally empty in the scaffold.
-          </p>
-        </Card>
       </main>
     </div>
   );

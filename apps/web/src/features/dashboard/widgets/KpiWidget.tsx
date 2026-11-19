@@ -9,7 +9,11 @@ const STATS: Record<string, { label: string; deltaLabel: string }> = {
   projects: { label: "Active projects", deltaLabel: "vs last sprint" },
 };
 
-/** One stat + trend. Trends always carry an explicit + / −, never colour alone. */
+/**
+ * One stat + trend. Trends always carry an explicit + / −, never colour
+ * alone. No fixed height: the card sizes to its content (the grid rows
+ * grow to fit — see DashboardGrid), so the number is never clipped.
+ */
 export function KpiWidget({ summary, config, onClearScope }: WidgetProps) {
   if (hasScope(config)) return <EmptyScope onClearScope={onClearScope} />;
   const stat = config.stat ?? "velocity";
@@ -42,12 +46,16 @@ export function KpiWidget({ summary, config, onClearScope }: WidgetProps) {
             : 0;
   const positive = delta >= 0;
   return (
-    <div className="p-5">
+    <div className="flex flex-col justify-center px-5 py-4">
       <p className="text-[13px] font-medium text-muted">{meta.label}</p>
-      <p className="mt-2 text-4xl font-semibold tabular-nums text-ink">{value}</p>
-      <p className={`mt-1 text-xs font-medium ${positive ? "text-done" : "text-risk"}`}>
+      <p className="widget-number mt-1.5 text-ink">{value}</p>
+      <span
+        className={`mt-2 inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
+          positive ? "bg-lime text-forest" : "bg-risk/10 text-risk"
+        }`}
+      >
         {positive ? `+${delta}` : `−${Math.abs(delta)}`} {meta.deltaLabel}
-      </p>
+      </span>
     </div>
   );
 }

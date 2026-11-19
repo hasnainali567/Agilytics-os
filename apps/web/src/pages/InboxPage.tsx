@@ -36,7 +36,7 @@ export function InboxPage() {
                 onClick={() => setFilter(option.value)}
                 className={`rounded-full px-3 py-1 text-sm font-medium ${
                   filter === option.value
-                    ? "bg-primary-600 text-white"
+                    ? "bg-forest text-white"
                     : "bg-canvas text-ink hover:bg-line"
                 }`}
               >

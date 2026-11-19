@@ -28,7 +28,7 @@ export function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar title="Good morning — here's your team at a glance" />
-      <main className="space-y-4 p-6">
+      <main className="space-y-5 px-6 py-6 lg:px-8">
         {isPending ? (
           <Card className="p-6 text-sm text-muted">Loading your dashboard…</Card>
         ) : isError || !data ? (
@@ -42,28 +42,32 @@ export function HomePage() {
           </Card>
         ) : (
           <>
-            <div className="grid gap-4 lg:grid-cols-12">
+            <div className="grid gap-5 lg:grid-cols-12">
               {/* White card (57%) — the main KPI. */}
-              <Card className="relative p-6 lg:col-span-7">
+              <Card className="relative flex flex-col p-7 lg:col-span-7">
                 <div className="flex items-start justify-between">
                   <p className="text-[13px] font-medium text-muted">Sprint velocity</p>
                   <button
                     type="button"
                     onClick={() => setShowHeroNumber((v) => !v)}
                     aria-label={showHeroNumber ? "Hide velocity number" : "Show velocity number"}
-                    className="rounded-full bg-pill px-3 py-1 text-xs font-medium text-ink"
+                    className="rounded-full bg-pill px-3 py-1 text-xs font-medium text-ink hover:bg-track"
                   >
                     {showHeroNumber ? "Hide" : "Show"}
                   </button>
                 </div>
-                <p className="hero-number mt-2 text-ink">
+                <p className="hero-number mt-3 text-ink">
                   {showHeroNumber ? `${data.kpis.velocityPoints} pts` : "•••"}
                 </p>
-                <p className="mt-1 text-sm text-muted">
+                <p className="mt-2 text-sm text-muted">
                   {data.kpis.ticketsDoneThisSprint} tickets done, {data.kpis.overdueTickets}{" "}
                   overdue, {data.kpis.atRiskMembers} members at risk.
                 </p>
-                <div className="mt-5 flex flex-wrap gap-2">
+                <span className="mt-3 inline-flex w-fit rounded-full bg-lime px-3 py-1 text-xs font-medium tabular-nums text-forest">
+                  {data.kpis.velocityDelta >= 0 ? "+" : "−"}
+                  {Math.abs(data.kpis.velocityDelta)} vs last sprint
+                </span>
+                <div className="mt-6 flex flex-wrap gap-2">
                   <Button asChild>
                     <Link to="/reports">View reports</Link>
                   </Button>
@@ -74,31 +78,31 @@ export function HomePage() {
                 <Link
                   to="/reports"
                   aria-label="Go to reports"
-                  className="absolute bottom-6 right-6 flex h-12 w-12 items-center justify-center rounded-full bg-lime text-xl font-semibold text-forest"
+                  className="absolute bottom-7 right-7 flex h-12 w-12 items-center justify-center rounded-full bg-lime text-xl font-semibold text-forest transition-colors hover:bg-lime-deep"
                 >
                   →
                 </Link>
               </Card>
 
               {/* Lime card (43%) — the highlight. */}
-              <div className="rounded-card bg-lime p-6 lg:col-span-5">
+              <div className="rounded-card bg-lime p-7 lg:col-span-5">
                 <span className="inline-flex rounded-full bg-forest px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
                   Priority · this sprint
                 </span>
                 <p className="hero-number mt-3 text-forest">{data.kpis.ticketsDoneThisSprint}</p>
                 <p className="text-sm font-medium text-forest">tickets done</p>
-                <span className="mt-2 inline-flex rounded-full bg-panel px-3 py-1 text-xs font-medium text-ink">
+                <span className="mt-3 inline-flex rounded-full bg-lime-light px-3 py-1 text-xs font-medium tabular-nums text-forest">
                   {data.kpis.ticketsDoneDelta >= 0 ? "+" : "−"}
                   {Math.abs(data.kpis.ticketsDoneDelta)} vs last sprint
                 </span>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-lime-light p-4">
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="rounded-inner bg-lime-light p-4">
                     <p className="text-2xl font-semibold tabular-nums text-forest">
                       {data.today.updatedMembers}/{data.today.totalMembers}
                     </p>
                     <p className="text-xs font-medium text-forest">updated today</p>
                   </div>
-                  <div className="rounded-2xl bg-lime-light p-4">
+                  <div className="rounded-inner bg-lime-light p-4">
                     <p className="text-2xl font-semibold tabular-nums text-forest">
                       {data.today.openBlockers}
                     </p>
@@ -108,14 +112,16 @@ export function HomePage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-3">
               <h2 className="text-lg font-semibold text-ink">My dashboard</h2>
               <button
                 type="button"
                 onClick={() => setEditing((v) => !v)}
                 aria-pressed={editing}
-                className={`rounded-full px-4 py-2 text-sm font-medium ${
-                  editing ? "bg-forest text-white" : "border border-line bg-panel text-ink"
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  editing
+                    ? "bg-forest text-white hover:bg-forest/90"
+                    : "border border-line bg-panel text-ink hover:bg-canvas"
                 }`}
               >
                 {editing ? "Done customising" : "Customise"}

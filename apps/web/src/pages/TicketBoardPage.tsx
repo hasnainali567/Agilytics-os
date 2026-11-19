@@ -1,18 +1,43 @@
+import { useEffect, useState } from "react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTicketSchema } from "@agilytics/shared";
+import { Link } from "@tanstack/react-router";
 import { TopBar } from "../components/layout";
 import { DailyUpdateComposer } from "../components/DailyUpdateComposer";
 import { Card } from "../components/ui";
-import { apiUrl } from "../lib/query-client";
-import { apiFetch } from "../lib/authFetch";
-import { fetchBoards, moveTicketToColumn, type BoardWithColumns } from "../lib/api";
+import {
+  createTicket,
+  fetchBoards,
+  fetchDashboardSummary,
+  fetchProjects,
+  fetchTickets,
+  moveTicketToColumn,
+  type BoardWithColumns,
+  type TicketWithStatus,
+} from "../lib/api";
 
-type TicketRow = { id: string; title: string; statusId: string | null; boardId: string | null };
+const inputCls =
+  "rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest";
 
-function TicketCard({ ticket }: { ticket: TicketRow }) {
+const PRIORITY_STYLE: Record<string, string> = {
+  LOW: "text-muted",
+  MEDIUM: "text-ink",
+  HIGH: "text-warn",
+  URGENT: "text-risk",
+};
+
+function TicketCard({
+  ticket,
+  selected,
+  onSelect,
+}: {
+  ticket: TicketWithStatus;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: ticket.id });
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -23,9 +48,17 @@ function TicketCard({ ticket }: { ticket: TicketRow }) {
       style={style}
       {...listeners}
       {...attributes}
-      className="rounded-lg border border-line bg-panel p-3 text-sm"
+      onClick={onSelect}
+      className={`cursor-pointer rounded-lg border p-3 text-sm ${
+        selected ? "border-forest bg-lime/30" : "border-line bg-panel"
+      }`}
     >
-      {ticket.title}
+      <p className="text-xs font-medium text-muted">{ticket.key}</p>
+      <p className="mt-0.5 font-medium text-ink">{ticket.title}</p>
+      <p className={`mt-1 text-xs font-medium ${PRIORITY_STYLE[ticket.priority] ?? "text-muted"}`}>
+        {ticket.priority}
+        {ticket.estimate != null ? ` · ${ticket.estimate} pts` : ""}
+      </p>
     </div>
   );
 }
@@ -35,11 +68,15 @@ function Column({
   name,
   colour,
   tickets,
+  selectedId,
+  onSelect,
 }: {
   id: string;
   name: string;
   colour: string;
-  tickets: TicketRow[];
+  tickets: TicketWithStatus[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id });
   return (
@@ -51,7 +88,12 @@ function Column({
       </h3>
       <div ref={setNodeRef} className="mt-3 min-h-16 space-y-2">
         {tickets.map((t) => (
-          <TicketCard key={t.id} ticket={t} />
+          <TicketCard
+            key={t.id}
+            ticket={t}
+            selected={t.id === selectedId}
+            onSelect={() => onSelect(t.id)}
+          />
         ))}
       </div>
     </Card>
@@ -63,72 +105,264 @@ function Column({
  * fixed status list. Drag-to-move PATCHes /tickets/:id/status with the
  * target column id; the API writes status history (who/when/from/to).
  * Unplaced tickets (no column yet) sit in their own non-droppable column.
+ * Clicking a ticket opens its detail panel below the board.
  */
 export function TicketBoardPage() {
   const queryClient = useQueryClient();
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedBoardId, setSelectedBoardId] = useState("");
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: fetchProjects,
+    retry: false,
+  });
   const boardsQuery = useQuery({
-    queryKey: ["boards"],
-    queryFn: () => fetchBoards(),
+    queryKey: ["boards", selectedProjectId],
+    queryFn: () => fetchBoards(selectedProjectId || undefined),
     retry: false,
   });
-  const { data, isPending, isError } = useQuery({
-    queryKey: ["tickets"],
-    queryFn: async () => {
-      const res = await apiFetch(`${apiUrl}/tickets`);
-      if (!res.ok) throw new Error(`Tickets API failed: ${res.status}`);
-      return (await res.json()) as TicketRow[];
+  const ticketsQuery = useQuery({
+    queryKey: ["tickets", selectedProjectId],
+    queryFn: () => fetchTickets(selectedProjectId || undefined),
+    retry: false,
+  });
+  const summaryQuery = useQuery({
+    queryKey: ["dashboard", "summary"],
+    queryFn: fetchDashboardSummary,
+    retry: false,
+  });
+
+  const projects = projectsQuery.data ?? [];
+  const boards = boardsQuery.data ?? [];
+  const board: BoardWithColumns | undefined = boards.find((b) => b.id === selectedBoardId);
+
+  // Default to the first project, then its default board.
+  useEffect(() => {
+    if (!selectedProjectId && projects.length > 0) setSelectedProjectId(projects[0].id);
+  }, [projects, selectedProjectId]);
+  useEffect(() => {
+    if (selectedProjectId && boards.length > 0 && !boards.some((b) => b.id === selectedBoardId)) {
+      setSelectedBoardId(boards[0].id);
+    }
+  }, [boards, selectedBoardId, selectedProjectId]);
+
+  const form = useForm({
+    resolver: zodResolver(createTicketSchema),
+    defaultValues: {
+      projectId: "",
+      boardId: "",
+      statusId: "",
+      title: "",
+      priority: "MEDIUM" as const,
+      estimate: undefined,
     },
-    retry: false,
   });
-  const form = useForm({ resolver: zodResolver(createTicketSchema) });
+  const watchedStatusId = form.watch("statusId");
+
+  // Keep the hidden form fields in sync with the pickers.
+  useEffect(() => {
+    if (selectedProjectId) form.setValue("projectId", selectedProjectId);
+    if (selectedBoardId) form.setValue("boardId", selectedBoardId);
+    const firstColumn = board?.columns[0];
+    if (firstColumn && !watchedStatusId) form.setValue("statusId", firstColumn.id);
+  }, [selectedProjectId, selectedBoardId, board, watchedStatusId, form]);
+
+  const tickets = ticketsQuery.data ?? [];
+  const boardTickets = tickets.filter((t) => !board || t.boardId === board.id);
+  const unplaced = boardTickets.filter((t) => !t.statusId);
+  const selectedTicket = boardTickets.find((t) => t.id === selectedTicketId) ?? null;
+  const memberName = (userId: string | null | undefined) =>
+    summaryQuery.data?.members.find((m) => m.userId === userId)?.name ?? null;
+
+  const create = useMutation({
+    mutationFn: createTicket,
+    onSuccess: () => {
+      form.reset({
+        projectId: selectedProjectId,
+        boardId: selectedBoardId,
+        statusId: form.getValues("statusId"),
+        title: "",
+        priority: "MEDIUM",
+        estimate: undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: ["tickets", selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+    },
+  });
   const move = useMutation({
     mutationFn: ({ ticketId, statusId }: { ticketId: string; statusId: string }) =>
       moveTicketToColumn(ticketId, statusId),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["tickets"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tickets", selectedProjectId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+    },
   });
+
   const onDragEnd = (event: DragEndEvent) => {
     const columnId = event.over?.id;
     if (!columnId || typeof columnId !== "string" || columnId === "unplaced") return;
     const ticketId = String(event.active.id);
-    const ticket = data?.find((t) => t.id === ticketId);
+    const ticket = tickets.find((t) => t.id === ticketId);
     if (!ticket || ticket.statusId === columnId) return;
     move.mutate({ ticketId, statusId: columnId });
   };
 
-  const board: BoardWithColumns | undefined = boardsQuery.data?.[0];
-  const boardTickets = (data ?? []).filter((t) => !board || t.boardId === board.id);
-  const unplaced = boardTickets.filter((t) => !t.statusId);
+  const loading = projectsQuery.isPending || boardsQuery.isPending || ticketsQuery.isPending;
+  const loadError =
+    projectsQuery.isError || boardsQuery.isError || ticketsQuery.isError;
 
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar title="Sprints" />
       <main className="space-y-4 p-6">
+        <Card className="flex flex-wrap items-end gap-3 p-5">
+          <label className="block text-sm">
+            <span className="font-medium text-ink">Project</span>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => {
+                setSelectedProjectId(e.target.value);
+                setSelectedBoardId("");
+                setSelectedTicketId(null);
+              }}
+              className={`${inputCls} mt-1 w-56`}
+              aria-label="Project"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="font-medium text-ink">Board</span>
+            <select
+              value={selectedBoardId}
+              onChange={(e) => {
+                setSelectedBoardId(e.target.value);
+                setSelectedTicketId(null);
+              }}
+              className={`${inputCls} mt-1 w-56`}
+              aria-label="Board"
+            >
+              {boards.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="ml-auto text-xs text-muted">
+            <Link to="/projects" className="font-medium text-forest hover:underline">
+              Manage projects
+            </Link>
+          </span>
+        </Card>
+
         <Card className="p-5">
           <form
-            onSubmit={form.handleSubmit(() => {
-              // TODO: POST /tickets with the validated values (needs a project picker first)
+            onSubmit={form.handleSubmit((data) => {
+              create.mutate({
+                projectId: data.projectId,
+                boardId: data.boardId || undefined,
+                statusId: data.statusId || undefined,
+                title: data.title,
+                priority: data.priority,
+                estimate: data.estimate,
+              });
             })}
-            className="flex gap-3"
+            className="flex flex-wrap items-end gap-3"
           >
-            <input
-              {...form.register("title")}
-              placeholder="New ticket title"
-              className="flex-1 rounded-lg border border-line px-3 py-2 text-sm outline-none"
-            />
+            <label className="block min-w-64 flex-1 text-sm">
+              <span className="font-medium text-ink">New ticket</span>
+              <input
+                {...form.register("title")}
+                placeholder="New ticket title"
+                className={`${inputCls} mt-1 w-full`}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-ink">Status</span>
+              <select
+                value={watchedStatusId ?? ""}
+                onChange={(e) => form.setValue("statusId", e.target.value)}
+                className={`${inputCls} mt-1 w-40`}
+                aria-label="Status"
+              >
+                {(board?.columns ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-ink">Priority</span>
+              <select {...form.register("priority")} className={`${inputCls} mt-1 w-32`}>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-ink">Estimate (pts)</span>
+              <input
+                {...form.register("estimate", {
+                  setValueAs: (v) => (v === "" ? undefined : Number(v)),
+                })}
+                type="number"
+                min={0}
+                max={100}
+                placeholder="—"
+                className={`${inputCls} mt-1 w-24`}
+              />
+            </label>
             <button
               type="submit"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white"
+              disabled={create.isPending || !selectedProjectId || !board}
+              className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              Add ticket
+              {create.isPending ? "Adding…" : "Add ticket"}
             </button>
           </form>
+          {form.formState.errors.title ? (
+            <p className="mt-2 text-sm text-red-700">A title is required.</p>
+          ) : null}
+          {form.formState.errors.projectId ? (
+            <p className="mt-2 text-sm text-red-700">Pick a project first.</p>
+          ) : null}
+          {create.isError ? (
+            <p className="mt-2 text-sm text-red-700">
+              Couldn't create that ticket — {create.error?.message ?? "the API refused it"}.
+            </p>
+          ) : null}
         </Card>
-        {isPending || boardsQuery.isPending ? (
+
+        {loading ? (
           <Card className="p-6 text-sm text-muted">Loading tickets…</Card>
-        ) : isError || !data || boardsQuery.isError || !board ? (
+        ) : loadError || projects.length === 0 ? (
           <Card className="p-6 text-sm text-muted">
-            The tickets API isn't reachable yet — start the API and sign in. Boards are created
-            automatically with every project (default template).
+            {projects.length === 0 && !loadError ? (
+              <>
+                No projects yet —{" "}
+                <Link to="/projects" className="font-medium text-forest hover:underline">
+                  create a project
+                </Link>{" "}
+                and its default board appears here.
+              </>
+            ) : (
+              "The tickets API isn't reachable yet — start the API and sign in."
+            )}
+          </Card>
+        ) : !board ? (
+          <Card className="p-6 text-sm text-muted">
+            This project has no board yet — boards are created automatically with every project.
           </Card>
         ) : (
           <>
@@ -141,10 +375,19 @@ export function TicketBoardPage() {
                     name={c.name}
                     colour={c.colour}
                     tickets={boardTickets.filter((t) => t.statusId === c.id)}
+                    selectedId={selectedTicketId}
+                    onSelect={setSelectedTicketId}
                   />
                 ))}
                 {unplaced.length > 0 && (
-                  <Column id="unplaced" name="Unplaced" colour="#94A3B8" tickets={unplaced} />
+                  <Column
+                    id="unplaced"
+                    name="Unplaced"
+                    colour="#94A3B8"
+                    tickets={unplaced}
+                    selectedId={selectedTicketId}
+                    onSelect={setSelectedTicketId}
+                  />
                 )}
               </div>
             </DndContext>
@@ -153,6 +396,90 @@ export function TicketBoardPage() {
                 Couldn't move that ticket — the API rejected the move.
               </Card>
             )}
+
+            {selectedTicket ? (
+              <Card className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted">{selectedTicket.key}</p>
+                    <h3 className="mt-0.5 text-sm font-semibold text-ink">
+                      {selectedTicket.title}
+                    </h3>
+                    {selectedTicket.description ? (
+                      <p className="mt-2 text-sm text-muted">{selectedTicket.description}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTicketId(null)}
+                    className="rounded-full border border-line bg-panel px-3 py-1 text-xs font-medium text-ink hover:bg-canvas"
+                  >
+                    Close
+                  </button>
+                </div>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <dt className="text-xs text-muted">Priority</dt>
+                    <dd className="mt-0.5 font-medium">{selectedTicket.priority}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted">Estimate</dt>
+                    <dd className="mt-0.5 font-medium">
+                      {selectedTicket.estimate != null
+                        ? `${selectedTicket.estimate} pts`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted">Assignee</dt>
+                    <dd className="mt-0.5 font-medium">
+                      {memberName(selectedTicket.assigneeId) ??
+                        selectedTicket.assigneeId ??
+                        "Unassigned"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted">Due date</dt>
+                    <dd className="mt-0.5 font-medium">
+                      {selectedTicket.dueDate
+                        ? new Date(selectedTicket.dueDate).toLocaleDateString()
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-muted">Move to status</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {board.columns.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        disabled={move.isPending || selectedTicket.statusId === c.id}
+                        onClick={() => move.mutate({ ticketId: selectedTicket.id, statusId: c.id })}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                          selectedTicket.statusId === c.id
+                            ? "border-forest bg-forest text-white"
+                            : "border-line bg-panel text-ink hover:bg-canvas"
+                        } disabled:opacity-50`}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ background: c.colour }}
+                        />
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-muted">
+                    Current status:{" "}
+                    <span className="font-medium text-ink">
+                      {selectedTicket.status?.name ?? "Unplaced"}
+                    </span>
+                  </p>
+                </div>
+              </Card>
+            ) : null}
+
             <DailyUpdateComposer tickets={boardTickets} />
           </>
         )}

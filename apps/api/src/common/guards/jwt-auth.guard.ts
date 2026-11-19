@@ -19,6 +19,7 @@ export class JwtAuthGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest<{
       headers: Record<string, string | undefined>;
       tenantId?: string;
+      platformRole?: string;
       user?: unknown;
     }>();
     const auth = req.headers.authorization;
@@ -33,10 +34,14 @@ export class JwtAuthGuard implements CanActivate {
       const payload = verify(auth.slice("Bearer ".length), secret) as {
         sub?: string;
         tenantId?: string;
+        platformRole?: string;
         "custom:tenant_id"?: string;
+        "custom:platform_role"?: string;
       };
       req.user = { id: payload.sub };
       req.tenantId = payload["custom:tenant_id"] ?? payload.tenantId ?? "demo-tenant";
+      // PlatformAdminGuard (runs after this guard) reads req.platformRole.
+      req.platformRole = payload.platformRole ?? payload["custom:platform_role"];
       return true;
     } catch {
       throw new UnauthorizedException("Invalid token");

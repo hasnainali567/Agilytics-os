@@ -1,9 +1,37 @@
-import type { Board, BoardColumn, DashboardSummary } from "@agilytics/shared";
+import type {
+  Board,
+  BoardColumn,
+  DashboardSummary,
+  Project,
+  Sprint,
+  Ticket,
+  TicketPriority,
+} from "@agilytics/shared";
 import { apiUrl } from "./query-client";
 import { apiFetch } from "./authFetch";
 
 /** Thin API client — the web app holds no business rules and no mock data.
  *  Pages render loading / empty / error states when the API is down. */
+
+async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await apiFetch(`${apiUrl}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  });
+  if (!res.ok) {
+    let detail = `API request failed: ${res.status}`;
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      if (typeof body.message === "string") detail = body.message;
+      else if (Array.isArray(body.message)) detail = body.message.join(", ");
+    } catch {
+      // Keep the status-based message.
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as T;
+}
+
 export async function fetchDashboardSummary(): Promise<DashboardSummary> {
   const res = await apiFetch(`${apiUrl}/reporting/dashboard-summary`);
   if (!res.ok) {
@@ -15,11 +43,59 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 export async function fetchAdminOrganisations(): Promise<
   { id: string; name: string; slug: string; members: number; projects: number }[]
 > {
-  const res = await apiFetch(`${apiUrl}/admin/organisations`);
-  if (!res.ok) {
-    throw new Error(`Admin API failed: ${res.status}`);
-  }
-  return (await res.json()) as never;
+  // GET /admin/organisations returns Prisma rows with _count — map them to
+  // the flat counts the Admin page renders.
+  const rows = await apiJson<
+    {
+      id: string;
+      name: string;
+      slug: string;
+      _count: { memberships: number; projects: number };
+    }[]
+  >("/admin/organisations");
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    members: r._count.memberships,
+    projects: r._count.projects,
+  }));
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  memberships: { organisation: { id: string; name: string } }[];
+}
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  return apiJson<AdminUser[]>("/admin/users");
+}
+
+export interface AdminAuditLog {
+  id: string;
+  tenantId: string;
+  userId: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  createdAt: string;
+}
+
+export async function fetchAdminAuditLogs(): Promise<AdminAuditLog[]> {
+  return apiJson<AdminAuditLog[]>("/admin/audit-logs");
+}
+
+export interface AdminHealth {
+  status: string;
+  service: string;
+  time: string;
+}
+
+export async function fetchAdminHealth(): Promise<AdminHealth> {
+  return apiJson<AdminHealth>("/admin/health");
 }
 
 export type BoardWithColumns = Board & { columns: BoardColumn[] };
@@ -83,4 +159,147 @@ export async function postDailyUpdate(
   if (!res.ok) {
     throw new Error(`Daily update failed: ${res.status}`);
   }
+}
+
+// --- Projects ---
+
+/** A project as the API returns it — the shared Project type plus the
+ *  human key (ENG, MA…) the API generates on create. */
+export interface ProjectWithKey extends Project {
+  key: string;
+}
+
+export async function fetchProjects(): Promise<ProjectWithKey[]> {
+  return apiJson<ProjectWithKey[]>("/projects");
+}
+
+export async function createProject(data: {
+  name: string;
+  description?: string;
+}): Promise<ProjectWithKey> {
+  return apiJson<ProjectWithKey>("/projects", { method: "POST", body: JSON.stringify(data) });
+}
+
+// --- Sprints ---
+
+export async function fetchSprints(): Promise<Sprint[]> {
+  return apiJson<Sprint[]>("/sprints");
+}
+
+export interface CreateSprintInput {
+  projectId: string;
+  name: string;
+  goal?: string;
+  startDate: string;
+  endDate: string;
+}
+
+export async function createSprint(data: CreateSprintInput): Promise<Sprint> {
+  return apiJson<Sprint>("/sprints", { method: "POST", body: JSON.stringify(data) });
+}
+
+// --- Tickets ---
+
+/** A ticket as the list endpoint returns it: shared Ticket fields plus
+ *  the human key (ENG-123) and the resolved status column. */
+export interface TicketWithStatus extends Ticket {
+  key: string;
+  status: BoardColumn | null;
+}
+
+export async function fetchTickets(projectId?: string): Promise<TicketWithStatus[]> {
+  const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
+  return apiJson<TicketWithStatus[]>(`/tickets${qs}`);
+}
+
+export interface CreateTicketInput {
+  projectId: string;
+  boardId?: string;
+  statusId?: string;
+  title: string;
+  description?: string;
+  priority?: TicketPriority;
+  estimate?: number;
+  assigneeId?: string;
+  dueDate?: string;
+}
+
+export async function createTicket(data: CreateTicketInput): Promise<TicketWithStatus> {
+  return apiJson<TicketWithStatus>("/tickets", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// --- Members (via /identity/me) ---
+
+export interface MemberDirectoryEntry {
+  membershipId: string;
+  userId: string;
+  name: string;
+  email: string;
+  /** Workspace role (OWNER / ADMIN / LEAD / MEMBER / VIEWER). */
+  role: string;
+}
+
+interface IdentityMeResponse {
+  tenantId: string;
+  memberships: {
+    id: string;
+    userId: string;
+    role: string;
+    roleId: string | null;
+    user: { id: string; name: string; email: string };
+  }[];
+  me: {
+    userId: string | null;
+    roleId: string | null;
+    roleName: string | null;
+    permissions: string[];
+  };
+}
+
+export async function fetchMembers(): Promise<MemberDirectoryEntry[]> {
+  const data = await apiJson<IdentityMeResponse>("/identity/me");
+  return data.memberships.map((m) => ({
+    membershipId: m.id,
+    userId: m.userId,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+  }));
+}
+
+// --- Boards / columns ---
+
+export async function createBoard(data: {
+  projectId: string;
+  name: string;
+  description?: string;
+}): Promise<BoardWithColumns> {
+  return apiJson<BoardWithColumns>("/boards", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function addBoardColumn(
+  boardId: string,
+  data: { name: string; category: "TODO" | "IN_PROGRESS" | "DONE"; colour?: string },
+): Promise<BoardColumn> {
+  return apiJson<BoardColumn>(`/boards/${boardId}/columns`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateBoardColumn(
+  boardId: string,
+  columnId: string,
+  data: { name?: string; category?: "TODO" | "IN_PROGRESS" | "DONE"; colour?: string },
+): Promise<BoardColumn> {
+  return apiJson<BoardColumn>(`/boards/${boardId}/columns/${columnId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }

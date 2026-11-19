@@ -2,7 +2,8 @@ import type { Member } from "@agilytics/shared";
 import type { WidgetProps } from "../types";
 import { EmptyScope, EmptyState, hasScope } from "./EmptyScope";
 
-const SEGMENT_COLORS = ["#a3e635", "#0f3d20", "#1fa463", "#ff6a2b", "#c0ee7e", "#8a8f8a"];
+/** Donut segment colours — Agibankz tokens: lime-deep, forest, done, warn, lime-light, muted. */
+const SEGMENT_COLORS = ["#A3E635", "#0F3D20", "#1FA463", "#FF6A2B", "#C0EE7E", "#8A8F8A"];
 
 /** Workload by member — donut of active tickets, with a legend. */
 export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
@@ -27,7 +28,7 @@ export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
         aria-label={`${total} active tickets across ${members.length} members`}
       >
         <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90">
-          <circle cx="64" cy="64" r={radius} fill="none" stroke="#e3e6e3" strokeWidth="16" />
+          <circle cx="64" cy="64" r={radius} fill="none" className="stroke-track" strokeWidth="16" />
           {members.map((m, i) => {
             const fraction = m.activeTickets / total;
             const dash = fraction * circumference;
@@ -49,8 +50,12 @@ export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold tabular-nums text-ink">{total}</span>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">active</span>
+          <span className="text-[28px] font-semibold leading-none tabular-nums text-ink">
+            {total}
+          </span>
+          <span className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted">
+            active
+          </span>
         </div>
       </div>
       <ul className="min-w-36 flex-1 space-y-2 text-sm">
@@ -62,7 +67,18 @@ export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
             />
             <span className="flex-1 truncate font-medium text-ink">{m.name}</span>
             <span className="tabular-nums text-muted">
-              {m.activeTickets} · {statusLabel(m)}
+              {m.activeTickets} ·{" "}
+              <span
+                className={
+                  m.status === "OVERLOADED"
+                    ? "font-medium text-risk"
+                    : m.status === "AT_RISK"
+                      ? "font-medium text-warn"
+                      : ""
+                }
+              >
+                {statusLabel(m)}
+              </span>
             </span>
           </li>
         ))}

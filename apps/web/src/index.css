@@ -70,6 +70,13 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-forest);
 }
 
 /* Hero numbers: 52–56px, weight 500–600, tight tracking, tabular figures. */
@@ -79,4 +86,14 @@ body {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
+}
+
+/* Smaller hero-style number for KPI widgets: big, but sized to fit a
+ * single grid row once rows grow to content (see DashboardGrid). */
+.widget-number {
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }

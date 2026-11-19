@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { format } from "date-fns";
 import { Link2, MessageSquare, Github, FileText, Calendar, Mail, Upload } from "lucide-react";
 import { TopBar } from "../components/layout";
 import { Card, CardHeader } from "../components/ui";
@@ -14,9 +13,9 @@ import { apiFetch } from "../lib/authFetch";
  *  empty states stay empty until a repo is entered or a file uploaded. */
 
 const inputCls =
-  "rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-primary-600";
+  "rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-forest";
 const btnPrimary =
-  "rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500 disabled:opacity-50";
+  "rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
 const btnSecondary =
   "rounded-lg border border-line bg-panel px-4 py-2 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-50";
 
@@ -209,7 +208,7 @@ function GitHubCard() {
                   href={pr.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-medium text-primary-600 hover:underline"
+                  className="text-xs font-medium text-forest hover:underline"
                 >
                   Open PR
                 </a>
@@ -221,7 +220,7 @@ function GitHubCard() {
           Commit rule: <code>Fixes ENG-123</code> closes the ticket, <code>Starts ENG-123</code>{" "}
           moves it to in-progress, a bare key only links the commit. Merged PRs close their tickets
           the same way. See linked PRs on a ticket from the{" "}
-          <a href="/sprints" className="font-medium text-primary-600 hover:underline">
+          <a href="/sprints" className="font-medium text-forest hover:underline">
             board
           </a>
           .
@@ -440,7 +439,7 @@ export function ConnectionsPage() {
         <Card>
           <CardHeader
             title="Connect your tools"
-            subtitle={`Last sync check ${format(new Date(), "PPP")} — toggles are local until OAuth lands`}
+            subtitle="Toggles are stored locally until live OAuth lands — Slack and GitHub above already call the real API"
           />
           <ul className="divide-y divide-line">
             {providers.map((p) => {
