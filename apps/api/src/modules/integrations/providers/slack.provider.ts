@@ -1,8 +1,13 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { WebClient } from "@slack/web-api";
 import { IntegrationCredentialStore } from "../credential-store.service";
 import { buildOAuthState, getOAuthStateSecret, providerCallbackUrl } from "../oauth-state";
-import type { IntegrationProvider, ProviderKind } from "./provider.interface";
+import type {
+  IncomingWebhookOpts,
+  IntegrationProvider,
+  ProviderKind,
+} from "./provider.interface";
 import {
   formatTicketAlertMessage,
   formatTicketClosedMessage,
@@ -29,7 +34,10 @@ const OAUTH_SCOPES = ["channels:read", "chat:write", "commands"].join(",");
  * - SLACK_BOT_TOKEN — legacy Phase 1 fallback: used only when the
  *   workspace has no stored OAuth token.
  * - SLACK_DEFAULT_CHANNEL — channel automation posts go to, e.g. "#agilytics".
- * - SLACK_SIGNING_SECRET — TODO: verify incoming webhook signatures.
+ * - SLACK_SIGNING_SECRET — verifies incoming Slack webhook/event
+ *   signatures (see verifySlackSignature). When set, a missing or bad
+ *   signature is rejected with 401; when unset, payloads are accepted
+ *   with a loud warning (dev only — set it before exposing the endpoint).
  */
 @Injectable()
 export class SlackProvider implements IntegrationProvider {
@@ -113,12 +121,88 @@ export class SlackProvider implements IntegrationProvider {
     );
   }
 
-  async handleWebhook(tenantId: string, payload: unknown): Promise<void> {
-    // TODO: verify the Slack signing secret (SLACK_SIGNING_SECRET) before
-    // acting on any payload; handle url_verification challenges here.
+  /**
+   * Incoming Slack webhook / Events API payload. Verifies the Slack
+   * signing secret when configured (see verifySlackSignature) and
+   * rejects with 401 on a missing or bad signature; when no secret is
+   * configured the payload is accepted with a loud warning (dev only).
+   *
+   * `url_verification` challenge: Slack sends `{ type:
+   * "url_verification", challenge }` once when the Events URL is
+   * registered — the challenge must be echoed back in the HTTP
+   * response body. This handler only logs it: echoing needs the
+   * controller to return the challenge, which is a follow-up when a
+   * real Slack Events endpoint is wired (today this route is an
+   * authenticated forwarder — see IntegrationsController.webhook).
+   */
+  async handleWebhook(
+    tenantId: string,
+    payload: unknown,
+    opts?: IncomingWebhookOpts,
+  ): Promise<void> {
+    if (this.isSlackVerificationConfigured()) {
+      if (
+        !opts?.rawBody ||
+        !this.verifySlackSignature(opts.rawBody, opts.timestamp, opts.signature)
+      ) {
+        this.logger.warn(`Slack webhook for tenant ${tenantId} REJECTED: missing or invalid signature`);
+        throw new UnauthorizedException("Invalid Slack webhook signature");
+      }
+    } else {
+      this.logger.warn(
+        `Slack webhook for tenant ${tenantId} accepted WITHOUT signature verification — set SLACK_SIGNING_SECRET`,
+      );
+    }
+    const body = payload as { type?: string; challenge?: string } | null;
+    if (body?.type === "url_verification") {
+      // See header: the challenge echo is a controller follow-up.
+      this.logger.log(
+        `Slack url_verification challenge received for tenant ${tenantId} (challenge must be echoed by the endpoint — not wired yet)`,
+      );
+      return;
+    }
     this.logger.log(
       `Slack webhook for tenant ${tenantId}: ${JSON.stringify(payload).slice(0, 200)}`,
     );
+  }
+
+  /**
+   * True when SLACK_SIGNING_SECRET is set — i.e. incoming Slack
+   * signatures can (and must) be verified.
+   */
+  isSlackVerificationConfigured(): boolean {
+    return Boolean(process.env.SLACK_SIGNING_SECRET);
+  }
+
+  /**
+   * Verify a Slack request signature (`X-Slack-Signature: v0=<hmac>`,
+   * `X-Slack-Request-Timestamp`). Slack signs
+   * `v0:<timestamp>:<raw body>` with HMAC-SHA256 over the signing
+   * secret; requests older than 5 minutes are rejected (replay
+   * protection). Returns false — and logs, without the secret — when
+   * SLACK_SIGNING_SECRET is not configured. Callers must pass the RAW
+   * request body (`req.rawBody`); a re-serialised body fails verification.
+   */
+  verifySlackSignature(
+    rawBody: string | Buffer,
+    timestamp: string | undefined,
+    signatureHeader: string | undefined,
+  ): boolean {
+    const secret = process.env.SLACK_SIGNING_SECRET;
+    if (!secret) {
+      this.logger.warn("SLACK_SIGNING_SECRET is not configured — cannot verify Slack webhook");
+      return false;
+    }
+    if (!timestamp || !signatureHeader?.startsWith("v0=")) return false;
+    const ts = Number(timestamp);
+    if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
+    const base = `v0:${timestamp}:${Buffer.isBuffer(rawBody) ? rawBody.toString("utf8") : rawBody}`;
+    const expected = Buffer.from(
+      `v0=${createHmac("sha256", secret).update(base).digest("hex")}`,
+      "utf8",
+    );
+    const actual = Buffer.from(signatureHeader, "utf8");
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 
   /**

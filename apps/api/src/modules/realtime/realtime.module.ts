@@ -7,9 +7,10 @@ import { RealtimeService } from "./realtime.service";
 
 /**
  * Realtime — Phase 2 (docs/REALTIME.md §3).
- * SSE stub endpoint kept as-is for compatibility; the WebSocket gateway
- * is the live path. RealtimeService is exported so tickets,
- * daily-updates and notifications can emit one-line events.
+ * GET /notifications/stream is the live SSE feed (workspace room only);
+ * the WebSocket gateway is the interactive path. RealtimeService is
+ * exported so tickets, daily-updates and notifications can emit
+ * one-line events.
  */
 @Module({
   controllers: [RealtimeController],

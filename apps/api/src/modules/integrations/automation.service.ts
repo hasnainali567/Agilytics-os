@@ -21,6 +21,7 @@ import {
 } from "./automation-catalog";
 import { GitHubProvider } from "./providers/github.provider";
 import { SlackProvider } from "./providers/slack.provider";
+import { assertAutomationRuleAllowed } from "../billing/plan-features";
 
 /** Same stale rule as ReportingService: not done + no daily update in 3 days. */
 const STALE_AFTER_DAYS = 3;
@@ -101,6 +102,9 @@ export class AutomationService implements OnModuleInit {
 
   async create(tenantId: string, input: unknown, userId?: string) {
     const parsed = this.parseCreate(input);
+    // Plan cap (billing/plan-features.ts): FREE allows 3 rules; paid
+    // plans allow more. Enforced server-side, before any write.
+    await assertAutomationRuleAllowed(this.prisma, tenantId);
     const rule = await this.prisma.automationRule.create({
       data: {
         tenantId,

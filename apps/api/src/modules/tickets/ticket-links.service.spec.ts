@@ -19,6 +19,9 @@ function mockPrisma(overrides: Record<string, unknown> = {}) {
       delete: jest.fn(async () => ({})),
       ...ticketLinkOverrides,
     },
+    auditLog: {
+      create: jest.fn(async () => ({})),
+    },
   } as unknown as PrismaService;
 }
 

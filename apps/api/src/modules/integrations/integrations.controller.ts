@@ -6,12 +6,13 @@ import {
   Param,
   Post,
   Query,
+  Req,
   Res,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { Response } from "express";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Request, Response } from "express";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { TenantId } from "../../common/decorators/tenant.decorator";
 import { Public } from "../../common/decorators/public.decorator";
@@ -48,12 +49,16 @@ export class IntegrationsController {
     private readonly githubWebhook: GitHubWebhookService,
   ) {}
 
+  @ApiOperation({ summary: "List integrations" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   list(@TenantId() tenantId: string) {
     return this.integrations.list(tenantId);
   }
 
   /** Authorize URL for the OAuth flow (503 when the provider is not configured). */
+  @ApiOperation({ summary: "Authorize" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get(":provider/authorize")
   authorize(@TenantId() tenantId: string, @Param("provider") provider: ProviderKind) {
     return this.integrations.authorizeUrl(tenantId, provider);
@@ -65,6 +70,8 @@ export class IntegrationsController {
    * then redirects to the web callback page with the outcome.
    */
   @Public()
+  @ApiOperation({ summary: "Oauth callback" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get(":provider/callback")
   async oauthCallback(
     @Param("provider") provider: ProviderKind,
@@ -88,28 +95,38 @@ export class IntegrationsController {
     }
   }
 
+  @ApiOperation({ summary: "Connect" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":provider/connect")
   connect(@TenantId() tenantId: string, @Body() body: { provider: ProviderKind; code: string }) {
     return this.integrations.connect(tenantId, body.provider, body.code);
   }
 
+  @ApiOperation({ summary: "Disconnect" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":provider/disconnect")
   disconnect(@TenantId() tenantId: string, @Body() body: { provider: ProviderKind }) {
     return this.integrations.disconnect(tenantId, body.provider);
   }
 
+  @ApiOperation({ summary: "Sync" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":provider/sync")
   sync(@TenantId() tenantId: string, @Param("provider") provider: ProviderKind) {
     return this.integrations.syncProvider(tenantId, provider);
   }
 
   /** Thin Slack: post a message to a configured channel (workspace token first). */
+  @ApiOperation({ summary: "Post to slack" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("slack/post")
   postToSlack(@TenantId() tenantId: string, @Body() body: { channel: string; text: string }) {
     return this.integrations.postToSlack(body.channel, body.text, tenantId);
   }
 
   /** Thin GitHub: open PRs for a repo (ticket view filters by ticket key). */
+  @ApiOperation({ summary: "List pull requests" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("github/pull-requests")
   listPullRequests(
     @TenantId() tenantId: string,
@@ -124,18 +141,24 @@ export class IntegrationsController {
   // ---- Notion ----
 
   /** Pages/databases the connected Notion integration can see. */
+  @ApiOperation({ summary: "List notion items" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("notion/databases")
   listNotionItems(@TenantId() tenantId: string) {
     return this.integrations.listNotionItems(tenantId);
   }
 
   /** Stored Notion link records (from the last sync / pinned links). */
+  @ApiOperation({ summary: "List notion links" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("notion/links")
   listNotionLinks(@TenantId() tenantId: string) {
     return this.integrations.listNotionLinks(tenantId);
   }
 
   /** Pin a Notion page/database to a project. */
+  @ApiOperation({ summary: "Link notion item" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("notion/databases/:id/link")
   linkNotionItem(
     @TenantId() tenantId: string,
@@ -147,23 +170,31 @@ export class IntegrationsController {
 
   // ---- Google: Calendar / Gmail / Drive ----
 
+  @ApiOperation({ summary: "List google events" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("google/calendar/events")
   listGoogleEvents(@TenantId() tenantId: string, @Query("maxResults") maxResults?: string) {
     return this.integrations.listGoogleEvents(tenantId, Number(maxResults) || 10);
   }
 
   /** Create a calendar event from a sprint deadline. */
+  @ApiOperation({ summary: "Create google event" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("google/calendar/events")
   createGoogleEvent(@TenantId() tenantId: string, @Body() body: { sprintId: string }) {
     return this.integrations.createGoogleEventFromSprint(tenantId, body.sprintId);
   }
 
+  @ApiOperation({ summary: "List gmail messages" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("google/gmail/messages")
   listGmailMessages(@TenantId() tenantId: string, @Query("maxResults") maxResults?: string) {
     return this.integrations.listGmailMessages(tenantId, Number(maxResults) || 10);
   }
 
   /** Create a ticket from an email (subject → title). */
+  @ApiOperation({ summary: "Create ticket from email" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("google/gmail/messages/:id/create-ticket")
   createTicketFromEmail(
     @TenantId() tenantId: string,
@@ -173,12 +204,16 @@ export class IntegrationsController {
     return this.integrations.createTicketFromEmail(tenantId, messageId, body.projectId);
   }
 
+  @ApiOperation({ summary: "List drive files" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("google/drive/files")
   listDriveFiles(@TenantId() tenantId: string, @Query("maxResults") maxResults?: string) {
     return this.integrations.listDriveFiles(tenantId, Number(maxResults) || 10);
   }
 
   /** Attach a Drive file link to a ticket (stored as a linked Document). */
+  @ApiOperation({ summary: "Attach drive file" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("google/drive/files/:id/attach")
   attachDriveFile(
     @TenantId() tenantId: string,
@@ -191,12 +226,16 @@ export class IntegrationsController {
   // ---- Generic webhook (escape hatch) ----
 
   /** Outgoing webhook config for this workspace (URL only — the secret is never returned). */
+  @ApiOperation({ summary: "Get webhook config" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("webhook/config")
   getWebhookConfig(@TenantId() tenantId: string) {
     return this.integrations.getWebhookConfig(tenantId);
   }
 
   /** Set the outgoing webhook URL + shared secret (stored encrypted). */
+  @ApiOperation({ summary: "Configure webhook" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("webhook/config")
   configureWebhook(
     @TenantId() tenantId: string,
@@ -206,6 +245,8 @@ export class IntegrationsController {
   }
 
   /** Fire a test event at the configured outgoing webhook. */
+  @ApiOperation({ summary: "Test webhook" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("webhook/test")
   testWebhook(@TenantId() tenantId: string, @Body() body: { event?: string }) {
     return this.integrations.postWebhookEvent(
@@ -221,6 +262,8 @@ export class IntegrationsController {
    * payload to its workspace). Creates/updates a ticket.
    */
   @Public()
+  @ApiOperation({ summary: "Incoming webhook" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("webhook/incoming")
   async incomingWebhook(
     @Body() body: IncomingTicketPayload,
@@ -231,30 +274,51 @@ export class IntegrationsController {
     return { status: "received" as const, ticket: result.ticket };
   }
 
+  /**
+   * Provider webhook entry point. The raw request body (`req.rawBody`,
+   * enabled by `rawBody: true` in main.ts) is passed through so each
+   * provider can verify its signature over the exact bytes the sender
+   * signed — GitHub via GitHubWebhookService (401 on a bad signature
+   * when GITHUB_WEBHOOK_SECRET is set), Slack via the provider's
+   * handleWebhook (same for SLACK_SIGNING_SECRET). When no secret is
+   * configured the payload is accepted with a warning (dev only).
+   *
+   * NOTE: this route is still an authenticated forwarder (JWT +
+   * tenant) — a real provider cannot call it directly. A public
+   * provider webhook endpoint (tenant resolved from the payload /
+   * repo) is a follow-up; the signature verification itself is done.
+   */
+  @ApiOperation({ summary: "Webhook" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":provider/webhook")
   webhook(
     @TenantId() tenantId: string,
     @Body() body: { provider: ProviderKind; event?: string; payload: unknown },
     @Headers("x-github-event") githubEvent: string | undefined,
     @Headers("x-hub-signature-256") signature: string | undefined,
+    @Headers("x-slack-signature") slackSignature: string | undefined,
+    @Headers("x-slack-request-timestamp") slackTimestamp: string | undefined,
+    @Req() req: Request,
   ) {
+    const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody;
     if (body.provider === "GITHUB") {
-      // TODO: pass the RAW body so the signature can be verified —
-      // Nest's JSON parser drops it (see GitHubWebhookService header).
       return this.githubWebhook
         .handle(
           tenantId,
           body.event ?? githubEvent ?? "unknown",
           (body.payload ?? {}) as Record<string, unknown>,
-          { signature },
+          { signature, rawBody },
         )
         .then((r) => ({ status: "received", ...r }));
     }
     const provider = this.registry.get(body.provider);
     if (!provider) return { status: "not_available" as const, provider: body.provider };
-    // TODO: verify the provider's webhook signature before dispatching.
     return provider
-      .handleWebhook(tenantId, body.payload)
+      .handleWebhook(tenantId, body.payload, {
+        rawBody,
+        timestamp: slackTimestamp,
+        signature: slackSignature,
+      })
       .then(() => ({ status: "received" as const }));
   }
 }

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { emitAutomationEvent } from "../../common/automation-events";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -55,6 +56,11 @@ export class TicketsService {
         .catch(() => null);
     }
     if (!ticket) throw new Error("Could not generate a unique ticket key");
+    await this.audit(tenantId, createdById, "ticket.created", "Ticket", ticket.id, {
+      key: ticket.key,
+      projectId: ticket.projectId,
+      title: ticket.title,
+    });
     // [Phase 2 realtime] one-line emit — fire-and-forget, never breaks the request.
     this.realtime?.emitToWorkspace(tenantId, "ticket.created", {
       ticketId: ticket.id,
@@ -140,7 +146,35 @@ export class TicketsService {
     };
     emitAutomationEvent("ticket.status_changed", tenantId, automationCtx);
     if (toColumn?.category === "DONE") emitAutomationEvent("ticket.done", tenantId, automationCtx);
+    await this.audit(tenantId, changedById, "ticket.status_changed", "Ticket", ticketId, {
+      key: ticket.key,
+      projectId: ticket.projectId,
+      fromStatusId: ticket.statusId,
+      toStatusId,
+      ...(note !== undefined ? { note } : {}),
+    });
     return updated;
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 
   private async assertColumn(tenantId: string, columnId: string, boardId?: string | null) {

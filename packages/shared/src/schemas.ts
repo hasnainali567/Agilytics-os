@@ -214,6 +214,22 @@ export const updateTicketStatusSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+// --- Ticket comments ---
+export const commentSchema = z.object({
+  id: idSchema,
+  tenantId: tenantIdSchema,
+  ticketId: idSchema,
+  authorId: idSchema,
+  body: z.string().min(1).max(5000),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export const createCommentSchema = z.object({
+  body: z.string().trim().min(1).max(5000),
+});
+export type Comment = z.infer<typeof commentSchema>;
+export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+
 // --- Automations (Phase 2, trigger → action) ---
 // The catalog is data-driven: adding a trigger/action is one entry here
 // (+ one executor branch in AutomationService). The API validates

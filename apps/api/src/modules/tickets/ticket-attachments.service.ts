@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { StorageService } from "../../common/storage/storage.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { MAX_ATTACHMENT_BYTES } from "./tickets.dto";
@@ -65,12 +66,24 @@ export class TicketAttachmentsService {
     if (!input.s3Key.startsWith(`tickets/${ticketId}/`)) {
       throw new BadRequestException("s3Key does not belong to this ticket");
     }
-    return this.prisma.ticketAttachment.create({
+    const attachment = await this.prisma.ticketAttachment.create({
       data: { tenantId, ticketId, uploadedById, ...input },
     });
+    await this.audit(
+      tenantId,
+      uploadedById,
+      "ticket.attachment_added",
+      "TicketAttachment",
+      attachment.id,
+      {
+        ticketId,
+        fileName: input.fileName,
+      },
+    );
+    return attachment;
   }
 
-  async remove(tenantId: string, ticketId: string, attachmentId: string) {
+  async remove(tenantId: string, ticketId: string, attachmentId: string, userId?: string) {
     const attachment = await this.prisma.ticketAttachment.findFirst({
       where: { id: attachmentId, tenantId, ticketId },
     });
@@ -78,6 +91,38 @@ export class TicketAttachmentsService {
       throw new NotFoundException("Attachment not found on this ticket");
     }
     await this.prisma.ticketAttachment.delete({ where: { id: attachmentId } });
+    await this.audit(
+      tenantId,
+      userId,
+      "ticket.attachment_removed",
+      "TicketAttachment",
+      attachmentId,
+      {
+        ticketId,
+        fileName: attachment.fileName,
+      },
+    );
     return { id: attachmentId, deleted: true, s3Key: attachment.s3Key };
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

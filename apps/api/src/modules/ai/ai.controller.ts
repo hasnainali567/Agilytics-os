@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { IsOptional, IsString, MaxLength } from "class-validator";
 import { describeAiProvider } from "@agilytics/ai";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
@@ -30,6 +30,8 @@ export class AskAgentDto {
 export class AiController {
   constructor(private readonly agent: AgentService) {}
 
+  @ApiOperation({ summary: "Status" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("status")
   status() {
     // Provider + model only — never keys (see @agilytics/ai).
@@ -40,6 +42,8 @@ export class AiController {
     };
   }
 
+  @ApiOperation({ summary: "Ask" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("ask")
   ask(
     @TenantId() tenantId: string,
@@ -49,6 +53,8 @@ export class AiController {
     return this.agent.ask(tenantId, req.user?.id ?? "unknown", body.question, body.threadId);
   }
 
+  @ApiOperation({ summary: "Summary" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("summary")
   summary(@TenantId() tenantId: string, @Body() body: { scope?: string }) {
     return {

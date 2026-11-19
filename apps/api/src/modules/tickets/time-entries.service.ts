@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
 /** Marker for the entry a Daily Update writes (see syncFromDailyUpdate). */
@@ -82,8 +83,14 @@ export class TimeEntriesService {
       },
     });
     const totalMinutes = entries.reduce((sum, e) => sum + e.minutes, 0);
-    const byMemberMap = new Map<string, { memberId: string; memberName: string; minutes: number }>();
-    const byTicketMap = new Map<string, { ticketId: string; ticketTitle: string; minutes: number }>();
+    const byMemberMap = new Map<
+      string,
+      { memberId: string; memberName: string; minutes: number }
+    >();
+    const byTicketMap = new Map<
+      string,
+      { ticketId: string; ticketTitle: string; minutes: number }
+    >();
     for (const e of entries) {
       const m = byMemberMap.get(e.memberId) ?? {
         memberId: e.memberId,
@@ -139,7 +146,7 @@ export class TimeEntriesService {
 
   async create(tenantId: string, ticketId: string, memberId: string, input: CreateTimeEntryInput) {
     await this.assertTicketInTenant(tenantId, ticketId);
-    return this.prisma.timeEntry.create({
+    const entry = await this.prisma.timeEntry.create({
       data: {
         tenantId,
         ticketId,
@@ -149,6 +156,12 @@ export class TimeEntriesService {
         note: input.note,
       },
     });
+    await this.audit(tenantId, memberId, "ticket.time_entry_created", "TimeEntry", entry.id, {
+      ticketId,
+      minutes: entry.minutes,
+      date: entry.date.toISOString().slice(0, 10),
+    });
+    return entry;
   }
 
   /** A member deletes only their own entry (scoped to tenant + ticket + member). */
@@ -160,6 +173,10 @@ export class TimeEntriesService {
       throw new NotFoundException("Time entry not found");
     }
     await this.prisma.timeEntry.delete({ where: { id: entryId } });
+    await this.audit(tenantId, memberId, "ticket.time_entry_deleted", "TimeEntry", entryId, {
+      ticketId,
+      minutes: entry.minutes,
+    });
     return { id: entryId, deleted: true };
   }
 
@@ -167,6 +184,8 @@ export class TimeEntriesService {
    * DailyUpdate.timeSpentMin writes to TimeEntry. Called by
    * DailyUpdatesService.upsertToday after the upsert. minutes null/0
    * removes the synced entry for that day (the update was cleared).
+   * Sync writes are covered by the daily_update.upserted audit row in
+   * DailyUpdatesService — no separate audit here.
    */
   async syncFromDailyUpdate(tenantId: string, ticketId: string, input: SyncDailyUpdateTimeInput) {
     const day = new Date(input.date);
@@ -198,6 +217,27 @@ export class TimeEntriesService {
         date: day,
         minutes: input.minutes,
         note: DAILY_UPDATE_NOTE,
+      },
+    });
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
       },
     });
   }

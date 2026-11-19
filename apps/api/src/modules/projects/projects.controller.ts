@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Prisma } from "@prisma/client";
 import { DEFAULT_BOARD_TEMPLATE, createProjectSchema } from "@agilytics/shared";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { TenantId } from "../../common/decorators/tenant.decorator";
 import { PrismaService } from "../../prisma/prisma.service";
+
+type ReqUser = { user?: { id?: string } };
 
 @ApiTags("projects")
 @ApiBearerAuth()
@@ -12,6 +15,8 @@ import { PrismaService } from "../../prisma/prisma.service";
 export class ProjectsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @ApiOperation({ summary: "List projects" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   list(@TenantId() tenantId: string) {
     return this.prisma.project.findMany({
@@ -20,8 +25,10 @@ export class ProjectsController {
     });
   }
 
+  @ApiOperation({ summary: "Create projects" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post()
-  async create(@TenantId() tenantId: string, @Body() body: unknown) {
+  async create(@TenantId() tenantId: string, @Req() req: ReqUser, @Body() body: unknown) {
     const parsed = createProjectSchema.parse(body);
     // Project key: first letters of the name's words, e.g. "Engineering"
     // -> ENG, "Mobile App" -> MA. Unique per tenant; append a number on
@@ -43,7 +50,7 @@ export class ProjectsController {
       if (!existing) break;
       key = `${baseKey}${n}`;
     }
-    return this.prisma.project.create({
+    const project = await this.prisma.project.create({
       data: {
         tenantId,
         key,
@@ -61,6 +68,32 @@ export class ProjectsController {
         },
       },
       include: { boards: { include: { columns: { orderBy: { order: "asc" } } } } },
+    });
+    await this.audit(tenantId, req.user?.id, "project.created", "Project", project.id, {
+      key: project.key,
+      name: project.name,
+    });
+    return project;
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
     });
   }
 }

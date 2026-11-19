@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { google } from "googleapis";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../../prisma/prisma.service";
 import { TicketsService } from "../../tickets/tickets.service";
 import { IntegrationCredentialStore } from "../credential-store.service";
@@ -120,7 +121,9 @@ export class GoogleProvider implements IntegrationProvider {
   /** Sync: verify the stored tokens still work (calendar list, 1 event). */
   async sync(tenantId: string): Promise<void> {
     const events = await this.listUpcomingEvents(tenantId, 1);
-    this.logger.log(`Google sync for tenant ${tenantId}: ${events.length} upcoming event(s) visible`);
+    this.logger.log(
+      `Google sync for tenant ${tenantId}: ${events.length} upcoming event(s) visible`,
+    );
   }
 
   async handleWebhook(tenantId: string, payload: unknown): Promise<void> {
@@ -171,10 +174,7 @@ export class GoogleProvider implements IntegrationProvider {
   }
 
   /** Create a calendar event from a sprint deadline (sprint must belong to this tenant). */
-  async createEventFromSprint(
-    tenantId: string,
-    sprintId: string,
-  ): Promise<GoogleCalendarEvent> {
+  async createEventFromSprint(tenantId: string, sprintId: string): Promise<GoogleCalendarEvent> {
     const sprint = await this.prisma.sprint.findFirst({
       where: { id: sprintId, tenantId },
       include: { project: true },
@@ -186,7 +186,8 @@ export class GoogleProvider implements IntegrationProvider {
       calendarId: "primary",
       requestBody: {
         summary: `Sprint deadline: ${sprint.project.name} — ${sprint.name}`,
-        description: sprint.goal ?? `Sprint ${sprint.name} ends ${sprint.endDate.toISOString().slice(0, 10)}.`,
+        description:
+          sprint.goal ?? `Sprint ${sprint.name} ends ${sprint.endDate.toISOString().slice(0, 10)}.`,
         start: { dateTime: sprint.endDate.toISOString() },
         end: { dateTime: new Date(sprint.endDate.getTime() + 60 * 60 * 1000).toISOString() },
       },
@@ -233,7 +234,11 @@ export class GoogleProvider implements IntegrationProvider {
   ) {
     const auth = await this.authedClient(tenantId);
     const gmail = google.gmail({ version: "v1", auth });
-    const { data } = await gmail.users.messages.get({ userId: "me", id: messageId, format: "full" });
+    const { data } = await gmail.users.messages.get({
+      userId: "me",
+      id: messageId,
+      format: "full",
+    });
     const headers = data.payload?.headers ?? [];
     const subject =
       headers.find((h) => h.name?.toLowerCase() === "subject")?.value ?? "(no subject)";
@@ -278,17 +283,13 @@ export class GoogleProvider implements IntegrationProvider {
    * to the ticket (TicketAttachment is S3-only, so a Drive link lives
    * in Project Docs instead).
    */
-  async attachDriveFileToTicket(
-    tenantId: string,
-    ticketId: string,
-    fileId: string,
-  ) {
+  async attachDriveFileToTicket(tenantId: string, ticketId: string, fileId: string) {
     const ticket = await this.prisma.ticket.findFirst({ where: { id: ticketId, tenantId } });
     if (!ticket) throw new Error("Ticket not found in this tenant");
     const files = await this.listDriveFiles(tenantId, 100);
     const file = files.find((f) => f.id === fileId);
     if (!file) throw new Error("Drive file not found");
-    return this.prisma.document.create({
+    const doc = await this.prisma.document.create({
       data: {
         tenantId,
         projectId: ticket.projectId,
@@ -301,6 +302,34 @@ export class GoogleProvider implements IntegrationProvider {
           url: file.webViewLink,
           mimeType: file.mimeType,
         },
+      },
+    });
+    // OAuth-delegated actor (no userId on this path): still audited.
+    await this.audit(tenantId, undefined, "document.created", "Document", doc.id, {
+      title: doc.title,
+      source: "google-drive",
+      ticketId: ticket.id,
+    });
+    return doc;
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
       },
     });
   }

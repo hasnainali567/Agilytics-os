@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { DEFAULT_BOARD_TEMPLATE } from "@agilytics/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -47,7 +48,7 @@ export class BoardsService {
     });
     if (!project) throw new Error("Project not found in this tenant");
     const columns = data.columns ?? DEFAULT_BOARD_TEMPLATE;
-    return this.prisma.board.create({
+    const board = await this.prisma.board.create({
       data: {
         tenantId,
         projectId: data.projectId,
@@ -59,6 +60,11 @@ export class BoardsService {
       },
       include: { columns: { orderBy: { order: "asc" } } },
     });
+    await this.audit(tenantId, userId, "board.created", "Board", board.id, {
+      projectId: data.projectId,
+      name: data.name,
+    });
+    return board;
   }
 
   async addColumn(
@@ -76,9 +82,15 @@ export class BoardsService {
     const board = await this.assertBoard(tenantId, boardId);
     const order =
       data.order ?? (await this.prisma.boardColumn.count({ where: { boardId: board.id } }));
-    return this.prisma.boardColumn.create({
+    const column = await this.prisma.boardColumn.create({
       data: { tenantId, boardId: board.id, order, ...data },
     });
+    await this.audit(tenantId, userId, "board.column_created", "BoardColumn", column.id, {
+      boardId: board.id,
+      name: column.name,
+      category: column.category,
+    });
+    return column;
   }
 
   async updateColumn(
@@ -95,7 +107,13 @@ export class BoardsService {
   ) {
     await this.requireWorkspaceAdmin(tenantId, userId);
     await this.assertColumn(tenantId, boardId, columnId);
-    return this.prisma.boardColumn.update({ where: { id: columnId }, data });
+    const column = await this.prisma.boardColumn.update({ where: { id: columnId }, data });
+    await this.audit(tenantId, userId, "board.column_updated", "BoardColumn", columnId, {
+      boardId,
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.category !== undefined ? { category: data.category } : {}),
+    });
+    return column;
   }
 
   /**
@@ -122,6 +140,10 @@ export class BoardsService {
       }),
       this.prisma.boardColumn.delete({ where: { id: columnId } }),
     ]);
+    await this.audit(tenantId, userId, "board.column_deleted", "BoardColumn", columnId, {
+      boardId,
+      ...(moveTicketsToColumnId ? { movedTicketsToColumnId: moveTicketsToColumnId } : {}),
+    });
     return { deleted: columnId, movedTo: moveTicketsToColumnId ?? null };
   }
 
@@ -134,6 +156,10 @@ export class BoardsService {
       );
     }
     await this.prisma.board.delete({ where: { id: boardId } });
+    await this.audit(tenantId, userId, "board.deleted", "Board", boardId, {
+      projectId: board.projectId,
+      name: board.name,
+    });
     return { deleted: boardId };
   }
 
@@ -159,5 +185,26 @@ export class BoardsService {
     if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
       throw new Error("Only a workspace admin (OWNER/ADMIN) can change workflows");
     }
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

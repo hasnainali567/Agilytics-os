@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../../common/guards/permissions.guard";
@@ -25,7 +25,7 @@ type ReqUser = { user?: { id?: string } };
 
 const colourSchema = z
   .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, "colour must be a hex colour like #0F3D20")
+  .regex(/^#[0-9a-fA-F]{6}$/, "colour must be a hex colour like #6366F1")
   .optional();
 
 const createRoleSchema = z.object({
@@ -40,7 +40,7 @@ const updateRoleSchema = z.object({
   description: z.string().trim().max(500).nullable().optional(),
   colour: z
     .string()
-    .regex(/^#[0-9a-fA-F]{6}$/, "colour must be a hex colour like #0F3D20")
+    .regex(/^#[0-9a-fA-F]{6}$/, "colour must be a hex colour like #6366F1")
     .nullable()
     .optional(),
 });
@@ -69,24 +69,32 @@ export class RolesController {
   constructor(private readonly roles: RolesService) {}
 
   /** Fixed 42-key catalog, grouped by area — drives the matrix rows. */
+  @ApiOperation({ summary: "Catalog" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("permissions")
   @RequireAnyPermission("ROLES_MANAGE", "MEMBERS_ASSIGN_ROLE")
   catalog() {
     return this.roles.listPermissionCatalog();
   }
 
+  @ApiOperation({ summary: "List roles" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   @RequireAnyPermission("ROLES_MANAGE", "MEMBERS_ASSIGN_ROLE")
   list(@TenantId() tenantId: string) {
     return this.roles.listRoles(tenantId);
   }
 
+  @ApiOperation({ summary: "Get roles" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get(":id")
   @RequireAnyPermission("ROLES_MANAGE", "MEMBERS_ASSIGN_ROLE")
   get(@TenantId() tenantId: string, @Param("id") id: string) {
     return this.roles.getRole(tenantId, id);
   }
 
+  @ApiOperation({ summary: "Create roles" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post()
   @RequirePermissions("ROLES_MANAGE")
   create(@TenantId() tenantId: string, @Req() req: ReqUser, @Body() body: unknown) {
@@ -94,6 +102,8 @@ export class RolesController {
     return this.roles.createRole(tenantId, req.user?.id ?? "unknown", parsed);
   }
 
+  @ApiOperation({ summary: "Update roles" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch(":id")
   @RequirePermissions("ROLES_MANAGE")
   update(
@@ -106,6 +116,8 @@ export class RolesController {
     return this.roles.updateRole(tenantId, req.user?.id ?? "unknown", id, parsed);
   }
 
+  @ApiOperation({ summary: "Remove roles" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Delete(":id")
   @RequirePermissions("ROLES_MANAGE")
   remove(@TenantId() tenantId: string, @Req() req: ReqUser, @Param("id") id: string) {
@@ -113,6 +125,8 @@ export class RolesController {
   }
 
   /** Replace the role's whole permission set (matrix save). */
+  @ApiOperation({ summary: "Replace permissions" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Put(":id/permissions")
   @RequirePermissions("ROLES_MANAGE")
   replacePermissions(
@@ -131,6 +145,8 @@ export class RolesController {
   }
 
   /** Assign a role to a member — the role dropdown on invite/edit. */
+  @ApiOperation({ summary: "Assign role" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch("members/:membershipId/role")
   @RequirePermissions("MEMBERS_ASSIGN_ROLE")
   assignRole(

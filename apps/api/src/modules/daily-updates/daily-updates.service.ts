@@ -1,4 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { emitAutomationEvent } from "../../common/automation-events";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -47,6 +48,15 @@ export class DailyUpdatesService {
       update: { ...data, hasBlocker: data.hasBlocker ?? false },
       create: { tenantId, ticketId, memberId, date, ...data, hasBlocker: data.hasBlocker ?? false },
     });
+    // One AuditLog row per upsert (created or re-saved today) — the
+    // daily update is the record of who did what, so it is audited.
+    await this.audit(tenantId, memberId, "daily_update.upserted", "DailyUpdate", update.id, {
+      ticketId,
+      ticketKey: ticket.key,
+      date: date.toISOString().slice(0, 10),
+      hasBlocker: data.hasBlocker ?? false,
+      ...(data.health ? { health: data.health } : {}),
+    });
     // One source for time: DailyUpdate.timeSpentMin writes to TimeEntry.
     // Best-effort — a time-sync failure must never fail the daily update.
     if (data.timeSpentMin != null) {
@@ -64,7 +74,12 @@ export class DailyUpdatesService {
       ).catch(() => null);
     }
     // [Phase 2 realtime] one-line emit — fire-and-forget.
-    const duPayload = { ticketId, memberId, date: date.toISOString().slice(0, 10), hasBlocker: data.hasBlocker ?? false };
+    const duPayload = {
+      ticketId,
+      memberId,
+      date: date.toISOString().slice(0, 10),
+      hasBlocker: data.hasBlocker ?? false,
+    };
     this.realtime?.emitToWorkspace(tenantId, "daily_update.created", duPayload);
     this.realtime?.emitToTicket(ticketId, "daily_update.created", duPayload);
     // [worker-b: automations] one-line hook — automation rules (daily_update.created). Never throws.
@@ -165,5 +180,26 @@ export class DailyUpdatesService {
         date: u.date.toISOString().slice(0, 10),
         health: u.health,
       }));
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

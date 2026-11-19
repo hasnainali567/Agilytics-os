@@ -213,9 +213,10 @@ across providers. Implemented in Phase 2
 | `ticket.created` | `TicketsService.create` (one-line bus emit) |
 | `ticket.status_changed` | `TicketsService.changeStatus` (one-line bus emit) |
 | `ticket.done` | `changeStatus` when the new column category is `DONE` |
-| `ticket.overdue` | Overdue sweep — `POST /api/v1/integrations/automations/sweep` (no daily update in 3 days, same rule as reporting); the worker calls this endpoint (`automation.run` job — HTTP call still TODO) |
+| `ticket.overdue` | Overdue sweep — `POST /api/v1/integrations/automations/sweep` (no daily update in 3 days, same rule as reporting); the worker calls this endpoint on an interval — see "Overdue sweep scheduler" below |
 | `daily_update.created` | `DailyUpdatesService.upsertToday` (one-line bus emit) |
-| `sprint.completed`, `comment.created` | In the catalog, but no event site yet — no sprint-complete endpoint and no comments endpoint exist in this slice, so nothing emits them |
+| `sprint.completed` | `POST /sprints/:id/complete` (SprintsService, backend end-to-end slice 2026-11-19) |
+| `comment.created` | `POST /tickets/:id/comments` (CommentsService, backend end-to-end slice 2026-11-19) |
 
 | Action | Behaviour |
 | --- | --- |
@@ -239,6 +240,39 @@ Examples (also seeded for demo-tenant):
 - `sprint.completed` → `notion.sync` (post the weekly report to Notion)
 - `ticket.done` → `github.comment` (comment on the linked PR)
 - `meeting.ended` → `ticket.create` (action items from the meeting notes — not in the Phase 2 catalog)
+
+### Overdue sweep scheduler (worker, 2026-11-19)
+
+`SweepSchedulerService` (`apps/worker/src/jobs/sweep-scheduler.service.ts`,
+wired in `WorkerModule`) runs the overdue sweep on an in-process interval —
+no paid scheduler, no SQS in this slice. Every tick it POSTs
+`/api/v1/integrations/automations/sweep`; the `automation.run` job
+(`JobsService`) delegates to the same `runSweepOnce()`, so the sweep also
+runs when the job is enqueued. Spec:
+`apps/worker/src/jobs/sweep-scheduler.service.spec.ts` (fake timers).
+
+| Env | Default | Meaning |
+| --- | --- | --- |
+| `SWEEP_API_BASE_URL` | `http://localhost:3001` | API base URL (no `/api/v1` suffix) |
+| `SWEEP_INTERVAL_MS` | `900000` (15 min) | Interval between sweeps |
+| `SWEEP_ENABLED` | `true` | `false` disables the scheduler |
+| `SWEEP_API_TOKEN` | — (required) | Bearer token for the sweep call |
+
+**Auth gap (deliberate — the endpoint's auth is NOT weakened):** the sweep
+endpoint is guarded by `JwtAuthGuard` + `AUTOMATIONS_MANAGE`, and the
+token's tenant claim decides which tenant is swept, so the worker needs an
+operator-provisioned JWT for a service user that holds `AUTOMATIONS_MANAGE`
+in the tenant to sweep. With no `SWEEP_API_TOKEN` the scheduler logs a
+warning and stays off, and the sweep only runs when an admin presses "Run
+overdue sweep" in the Connections page. A real service-account scheme (one
+token per tenant, or a service-auth header the API verifies) is a backend
+follow-up, not a silent downgrade of the endpoint.
+
+**Production path:** replace the in-process interval with SQS / EventBridge
+— the scheduler enqueues one `automation.run` job per tenant (the worker
+already has the SQS client in `QueueService`) instead of calling the API
+directly. The endpoint, the `ticket.overdue` evaluation and the audit trail
+do not change.
 
 ## Packages (pinned)
 

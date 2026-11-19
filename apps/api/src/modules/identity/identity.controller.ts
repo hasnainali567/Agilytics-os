@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { loadEffectivePermissions } from "../../common/guards/permissions.guard";
 import { TenantId } from "../../common/decorators/tenant.decorator";
@@ -15,6 +15,8 @@ type ReqUser = { user?: { id?: string } };
 export class IdentityController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @ApiOperation({ summary: "Me" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("me")
   async me(@TenantId() tenantId: string, @Req() req: ReqUser) {
     const memberships = await this.prisma.membership.findMany({

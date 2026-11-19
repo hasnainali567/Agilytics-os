@@ -121,12 +121,21 @@ export class GitHubProvider implements IntegrationProvider {
   }
 
   /**
+   * True when GITHUB_WEBHOOK_SECRET is set — i.e. webhook signatures
+   * can (and must) be verified. When false, GitHubWebhookService
+   * accepts payloads unverified with a loud warning (dev only).
+   */
+  isWebhookSecretConfigured(): boolean {
+    return Boolean(process.env.GITHUB_WEBHOOK_SECRET);
+  }
+
+  /**
    * Verify a GitHub webhook signature (`X-Hub-Signature-256:
    * sha256=<hmac>`). Returns false — and logs, without the secret — when
    * GITHUB_WEBHOOK_SECRET is not configured, so an unverified payload is
-   * never silently trusted. Callers must pass the RAW request body;
-   * Nest's JSON parser drops it, so the controller marks verification
-   * TODO until raw-body capture lands (see GitHubWebhookService).
+   * never silently trusted. Callers must pass the RAW request body
+   * (`req.rawBody`, enabled by `rawBody: true` in main.ts); Nest's JSON
+   * parser drops it, so a re-serialised body would fail verification.
    */
   verifyWebhookSignature(rawBody: string | Buffer, signatureHeader: string | undefined): boolean {
     const secret = process.env.GITHUB_WEBHOOK_SECRET;

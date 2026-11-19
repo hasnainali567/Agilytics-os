@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   createBoardColumnSchema,
   createBoardSchema,
@@ -34,22 +34,30 @@ type ReqUser = { user?: { id?: string } };
 export class BoardsController {
   constructor(private readonly boards: BoardsService) {}
 
+  @ApiOperation({ summary: "List boards" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   list(@TenantId() tenantId: string, @Query("projectId") projectId?: string) {
     return this.boards.list(tenantId, projectId);
   }
 
+  @ApiOperation({ summary: "Get boards" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get(":id")
   get(@TenantId() tenantId: string, @Param("id") id: string) {
     return this.boards.get(tenantId, id);
   }
 
+  @ApiOperation({ summary: "Create boards" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post()
   create(@TenantId() tenantId: string, @Req() req: ReqUser, @Body() body: unknown) {
     const parsed = createBoardSchema.parse(body);
     return this.boards.create(tenantId, req.user?.id ?? "unknown", parsed);
   }
 
+  @ApiOperation({ summary: "Add column" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":id/columns")
   addColumn(
     @TenantId() tenantId: string,
@@ -61,6 +69,8 @@ export class BoardsController {
     return this.boards.addColumn(tenantId, req.user?.id ?? "unknown", id, parsed);
   }
 
+  @ApiOperation({ summary: "Update column" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch(":boardId/columns/:columnId")
   updateColumn(
     @TenantId() tenantId: string,
@@ -73,6 +83,8 @@ export class BoardsController {
     return this.boards.updateColumn(tenantId, req.user?.id ?? "unknown", boardId, columnId, parsed);
   }
 
+  @ApiOperation({ summary: "Delete column" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Delete(":boardId/columns/:columnId")
   deleteColumn(
     @TenantId() tenantId: string,
@@ -90,6 +102,8 @@ export class BoardsController {
     );
   }
 
+  @ApiOperation({ summary: "Delete board" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Delete(":id")
   deleteBoard(@TenantId() tenantId: string, @Req() req: ReqUser, @Param("id") id: string) {
     return this.boards.deleteBoard(tenantId, req.user?.id ?? "unknown", id);

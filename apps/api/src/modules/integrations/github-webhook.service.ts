@@ -1,23 +1,21 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { CommitRuleService, type CommitRuleOutcome } from "./commit-rule.service";
 import { GitHubProvider } from "./providers/github.provider";
 
 /**
- * GitHub webhook receiver (stub-grade Phase 1).
+ * GitHub webhook receiver.
  *
  * Handles `push` (commits → ticket rule) and `pull_request` with
  * action `closed` + `merged: true` (merged PR → close linked tickets).
  * Unknown events are logged and ignored.
  *
- * Signature check — TODO, honestly incomplete: verification needs the RAW
- * request body, but Nest's JSON parser hands this service the parsed
- * payload, so `verifyWebhookSignature` cannot run yet. The HMAC check
- * itself is implemented in GitHubProvider.verifyWebhookSignature; the
- * remaining work is raw-body capture middleware in main.ts (another
- * slice — main.ts is outside this slice's ownership). Until then this
- * service logs a warning and proceeds, and the endpoint must stay behind
- * auth / a secret URL in any deployment. Do NOT treat a received webhook
- * as verified.
+ * Signature verification: the caller passes the RAW request body
+ * (`req.rawBody`, enabled by `rawBody: true` in main.ts) plus the
+ * `X-Hub-Signature-256` header, and the HMAC-SHA256 check runs against
+ * GITHUB_WEBHOOK_SECRET. When the secret is configured, a missing or
+ * bad signature is rejected with 401 — never processed. When no secret
+ * is configured (local dev only), the payload is accepted with a loud
+ * warning; set the secret before exposing this endpoint anywhere real.
  */
 @Injectable()
 export class GitHubWebhookService {
@@ -34,15 +32,22 @@ export class GitHubWebhookService {
     payload: Record<string, unknown>,
     opts?: { rawBody?: string | Buffer; signature?: string },
   ): Promise<{ handled: boolean; outcomes: CommitRuleOutcome[] }> {
-    if (opts?.rawBody && opts.signature) {
-      if (!this.github.verifyWebhookSignature(opts.rawBody, opts.signature)) {
-        this.logger.warn(`GitHub webhook signature verification failed for tenant ${tenantId}`);
-        return { handled: false, outcomes: [] };
+    if (this.github.isWebhookSecretConfigured()) {
+      if (
+        !opts?.rawBody ||
+        !opts.signature ||
+        !this.github.verifyWebhookSignature(opts.rawBody, opts.signature)
+      ) {
+        this.logger.warn(
+          `GitHub webhook ${event} for tenant ${tenantId} REJECTED: missing or invalid signature`,
+        );
+        throw new UnauthorizedException("Invalid GitHub webhook signature");
       }
     } else {
-      // TODO: raw-body capture — signature NOT verified (see header).
+      // No secret configured — dev-only behaviour: accept unverified
+      // with a loud warning. Never do this in production.
       this.logger.warn(
-        `GitHub webhook ${event} for tenant ${tenantId} accepted WITHOUT signature verification (TODO: raw-body capture)`,
+        `GitHub webhook ${event} for tenant ${tenantId} accepted WITHOUT signature verification — set GITHUB_WEBHOOK_SECRET`,
       );
     }
 

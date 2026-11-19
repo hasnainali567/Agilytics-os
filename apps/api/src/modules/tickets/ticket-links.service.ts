@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { TicketLinkType } from "@prisma/client";
+import type { Prisma, TicketLinkType } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { TicketLinkTypeInput } from "./tickets.dto";
 
@@ -59,6 +59,7 @@ export class TicketLinksService {
     tenantId: string,
     fromTicketId: string,
     input: { toTicketId: string; type: TicketLinkTypeInput },
+    userId?: string,
   ) {
     if (input.toTicketId === fromTicketId) {
       throw new BadRequestException("A ticket cannot link to itself");
@@ -87,12 +88,18 @@ export class TicketLinksService {
     if (existing) {
       throw new ConflictException("These tickets are already linked this way");
     }
-    return this.prisma.ticketLink.create({
+    const link = await this.prisma.ticketLink.create({
       data: { tenantId, fromTicketId: from, toTicketId: to, type },
     });
+    await this.audit(tenantId, userId, "ticket.link_created", "TicketLink", link.id, {
+      fromTicketId: from,
+      toTicketId: to,
+      type,
+    });
+    return link;
   }
 
-  async remove(tenantId: string, ticketId: string, linkId: string) {
+  async remove(tenantId: string, ticketId: string, linkId: string, userId?: string) {
     const link = await this.prisma.ticketLink.findFirst({
       where: {
         id: linkId,
@@ -104,6 +111,32 @@ export class TicketLinksService {
       throw new NotFoundException("Ticket link not found on this ticket");
     }
     await this.prisma.ticketLink.delete({ where: { id: linkId } });
+    await this.audit(tenantId, userId, "ticket.link_deleted", "TicketLink", linkId, {
+      fromTicketId: link.fromTicketId,
+      toTicketId: link.toTicketId,
+      type: link.type,
+    });
     return { id: linkId, deleted: true };
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

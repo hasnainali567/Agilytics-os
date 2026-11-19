@@ -134,6 +134,30 @@ enum MemberRole {
   VIEWER
 }
 
+/**
+ * Plan — billing tier (DECISION-SHEET.md Q1, approved 2026-11-18).
+ * Prices are PKR per user per month: STARTER 1,500 / GROWTH 2,500 /
+ * BUSINESS 4,000; ENTERPRISE is custom; every paid plan starts with a
+ * 14-day free trial. FREE is the no-card trial/default tier.
+ * Limits per plan live in code (billing/plan-features.ts), NOT in the
+ * DB — a plan change must never need a migration. See billing module.
+ */
+enum Plan {
+  FREE
+  STARTER
+  GROWTH
+  BUSINESS
+  ENTERPRISE
+}
+
+/** Invite status — one row per invitation, never a user account. */
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum ProjectStatus {
   ACTIVE
   PAUSED
@@ -184,10 +208,23 @@ model Organisation {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
+  /**
+   * Billing plan (Plan enum). Defaults FREE — a workspace created
+   * without a plan is a free workspace, never an error. `planStartedAt`
+   * is when the current plan began; `trialEndsAt` is set on paid plans
+   * during their 14-day trial (null once the trial ends / on FREE).
+   * NO live Stripe: plan changes are set by a platform admin / owner
+   * via POST /billing/plan; Stripe Checkout is the post-funding
+   * provider (see billing module). Prices: DECISION-SHEET.md Q1.
+   */
+  plan          Plan      @default(FREE)
+  planStartedAt DateTime?
+  trialEndsAt   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   memberships Membership[]
+  invites     Invite[]
   teams       Team[]
   projects    Project[]
   roles       Role[]
@@ -218,6 +255,7 @@ model User {
   notifications Notification[]
   dashboardLayouts DashboardLayout[]
   projectGuests ProjectGuest[]
+  sentInvites Invite[] @relation("InviteInviter")
 
   @@map("users")
 }
@@ -247,6 +285,37 @@ model Membership {
   @@unique([tenantId, userId])
   @@index([tenantId, roleId])
   @@map("memberships")
+}
+
+/**
+ * Invite — a workspace invitation. An invite is NOT a user account:
+ * no User row is created until the invitee accepts (POST
+ * /members/invites/:token/accept), which is when the Membership is
+ * created. The token is returned in the create response in dev
+ * because there is no email sender yet — in production the token
+ * goes out by email (SES) and is NEVER returned by the API.
+ * Expires 7 days after creation; expired invites are rejected on
+ * accept (410) and marked EXPIRED. One pending invite per
+ * (tenant, email) — a second invite while one is pending is 409.
+ */
+model Invite {
+  id          String       @id @default(uuid())
+  tenantId    String
+  email       String
+  roleId      String
+  invitedById String
+  /** Random 64-hex token, unique — the accept link carries this. */
+  token       String       @unique
+  status      InviteStatus @default(PENDING)
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+
+  organisation Organisation @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  invitedBy    User         @relation("InviteInviter", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, email])
+  @@map("invites")
 }
 
 /**
@@ -281,6 +350,7 @@ model Role {
   organisation Organisation   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   memberships  Membership[]   @relation("MembershipRole")
   permissions  RolePermission[]
+  invites      Invite[]
 
   @@unique([tenantId, name])
   @@index([tenantId, isSystem])

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
 /**
@@ -25,26 +26,70 @@ export class TicketWatchersService {
     });
   }
 
-  async add(tenantId: string, ticketId: string, userId: string) {
+  async add(tenantId: string, ticketId: string, userId: string, actorId?: string) {
     await this.assertTicketInTenant(tenantId, ticketId);
     const membership = await this.prisma.membership.findFirst({ where: { tenantId, userId } });
     if (!membership) {
       throw new BadRequestException("Only a member of this workspace can watch a ticket");
     }
-    return this.prisma.ticketWatcher.upsert({
+    const watcher = await this.prisma.ticketWatcher.upsert({
       where: { ticketId_userId: { ticketId, userId } },
       update: {},
       create: { ticketId, userId },
     });
+    await this.audit(
+      tenantId,
+      actorId ?? userId,
+      "ticket.watcher_added",
+      "TicketWatcher",
+      `${ticketId}:${userId}`,
+      {
+        ticketId,
+        watchedUserId: userId,
+      },
+    );
+    return watcher;
   }
 
-  async remove(tenantId: string, ticketId: string, userId: string) {
+  async remove(tenantId: string, ticketId: string, userId: string, actorId?: string) {
     await this.assertTicketInTenant(tenantId, ticketId);
     try {
       await this.prisma.ticketWatcher.delete({ where: { ticketId_userId: { ticketId, userId } } });
     } catch {
       throw new NotFoundException("Watcher not found on this ticket");
     }
+    await this.audit(
+      tenantId,
+      actorId ?? userId,
+      "ticket.watcher_removed",
+      "TicketWatcher",
+      `${ticketId}:${userId}`,
+      {
+        ticketId,
+        watchedUserId: userId,
+      },
+    );
     return { ticketId, userId, deleted: true };
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { TenantId } from "../../../common/decorators/tenant.decorator";
 import { DashboardLayoutsService } from "./dashboard-layouts.service";
@@ -28,6 +28,8 @@ import {
 export class DashboardLayoutsController {
   constructor(private readonly layouts: DashboardLayoutsService) {}
 
+  @ApiOperation({ summary: "Get layout" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("layout")
   getLayout(
     @TenantId() tenantId: string,
@@ -44,6 +46,8 @@ export class DashboardLayoutsController {
     });
   }
 
+  @ApiOperation({ summary: "Save layout" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Put("layout")
   saveLayout(
     @TenantId() tenantId: string,
@@ -54,6 +58,8 @@ export class DashboardLayoutsController {
     return this.layouts.saveLayout(tenantId, req.user?.id ?? "unknown", parsed);
   }
 
+  @ApiOperation({ summary: "Reset layout" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("layout/reset")
   resetLayout(
     @TenantId() tenantId: string,

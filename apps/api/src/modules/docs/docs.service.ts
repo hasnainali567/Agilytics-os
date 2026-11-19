@@ -120,7 +120,7 @@ export class DocsService {
     return doc;
   }
 
-  async create(tenantId: string, input: CreateDocumentInput) {
+  async create(tenantId: string, input: CreateDocumentInput, userId?: string) {
     this.requireScope(input);
     await this.assertParentsInTenant(tenantId, input);
     if (input.notionUrl !== undefined && !isHttpUrl(input.notionUrl)) {
@@ -132,7 +132,7 @@ export class DocsService {
       (input.notionUrl
         ? { source: "notion", notionUrl: input.notionUrl }
         : (templateStarter(template) as unknown as Prisma.InputJsonValue));
-    return this.prisma.document.create({
+    const doc = await this.prisma.document.create({
       data: {
         tenantId,
         title: input.title,
@@ -143,16 +143,30 @@ export class DocsService {
         content,
       },
     });
+    await this.audit(tenantId, userId, "document.created", "Document", doc.id, {
+      title: doc.title,
+      template: doc.template,
+      ...(input.notionUrl ? { notionUrl: input.notionUrl } : {}),
+    });
+    return doc;
   }
 
   /** Link a Notion doc under a project/ticket/sprint — stored, never fetched. */
-  linkNotion(tenantId: string, input: { title: string; notionUrl: string } & DocumentScope) {
-    return this.create(tenantId, { ...input, template: "NOTE", notionUrl: input.notionUrl });
+  linkNotion(
+    tenantId: string,
+    input: { title: string; notionUrl: string } & DocumentScope,
+    userId?: string,
+  ) {
+    return this.create(
+      tenantId,
+      { ...input, template: "NOTE", notionUrl: input.notionUrl },
+      userId,
+    );
   }
 
-  async update(tenantId: string, id: string, input: UpdateDocumentInput) {
+  async update(tenantId: string, id: string, input: UpdateDocumentInput, userId?: string) {
     await this.get(tenantId, id);
-    return this.prisma.document.update({
+    const doc = await this.prisma.document.update({
       where: { id },
       data: {
         ...(input.title !== undefined ? { title: input.title } : {}),
@@ -160,11 +174,39 @@ export class DocsService {
         ...(input.content !== undefined ? { content: input.content as Prisma.InputJsonValue } : {}),
       },
     });
+    await this.audit(tenantId, userId, "document.updated", "Document", id, {
+      title: doc.title,
+    });
+    return doc;
   }
 
-  async remove(tenantId: string, id: string) {
-    await this.get(tenantId, id);
+  async remove(tenantId: string, id: string, userId?: string) {
+    const doc = await this.get(tenantId, id);
     await this.prisma.document.delete({ where: { id } });
+    await this.audit(tenantId, userId, "document.deleted", "Document", id, {
+      title: doc.title,
+    });
     return { id, deleted: true };
+  }
+
+  /** Same audit() shape as RolesService — one AuditLog row per mutation. */
+  private audit(
+    tenantId: string,
+    userId: string | undefined,
+    action: string,
+    entity: string,
+    entityId: string,
+    metadata: Record<string, unknown>,
+  ) {
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        entity,
+        entityId,
+        metadata: metadata as Prisma.InputJsonValue,
+      },
+    });
   }
 }

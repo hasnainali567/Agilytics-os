@@ -10,8 +10,12 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@jest/globals": "^30.5.2",
     "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.2.10",
     "@types/node": "^24.0.0",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.15",
     "typescript": "^5.9.2"
   },
   "name": "worker",
@@ -21,6 +25,7 @@
     "dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "start": "node dist/main.js",
+    "test": "jest",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "version": "0.1.0"

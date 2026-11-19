@@ -1,30 +1,61 @@
-import { Controller, Get, Header, HttpCode } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Sse, UseGuards, type MessageEvent } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Observable } from "rxjs";
+import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
+import { TenantId } from "../../common/decorators/tenant.decorator";
+import { EventBusService } from "./event-bus.service";
+
+/** SSE heartbeat interval — keeps proxies / load balancers from closing an idle stream. */
+const HEARTBEAT_MS = 30_000;
 
 /**
- * Realtime — Phase 1 stub (see docs/REALTIME.md).
+ * Realtime — SSE stream (see docs/REALTIME.md).
  *
- * GET /notifications/stream is the SSE endpoint the web will subscribe to
- * later. It exists now so the API shape is fixed, but it returns 501 —
- * no events are emitted and no notification rows are stored yet. Phase 1
- * realtime is TanStack Query polling (dashboard refetchInterval).
- * Phase 2 adds the NestJS WebSocket gateway + Redis/Valkey pub-sub
- * adapter; until then there is intentionally no socket.io here.
+ * GET /notifications/stream is the live Server-Sent Events feed for the
+ * authenticated tenant. The WebSocket gateway stays the interactive
+ * path (presence, per-ticket rooms); this stream is the workspace-level
+ * feed — notification / ticket events published to
+ * `workspace:<tenantId>` via RealtimeService → EventBus.
+ *
+ * NOTE: EventSource cannot send an Authorization header — clients
+ * subscribe with fetch + ReadableStream and pass the Bearer token.
  */
 @ApiTags("realtime")
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller("notifications")
 export class RealtimeController {
-  @Get("stream")
-  @HttpCode(501)
-  @Header("Content-Type", "text/event-stream")
-  @Header("Cache-Control", "no-cache")
-  @Header("Connection", "keep-alive")
-  stream() {
-    return {
-      code: "realtime_not_implemented",
-      phase: 1,
-      message:
-        "Realtime events are not implemented yet — the web polls via TanStack Query (see docs/REALTIME.md).",
-    };
+  constructor(private readonly bus: EventBusService) {}
+
+  /**
+   * Live SSE stream for the authenticated tenant.
+   *
+   * Emits a `connected` event on subscribe, then every envelope
+   * published to this tenant's workspace room, plus a `heartbeat`
+   * every 30s. Disconnecting unsubscribes from the bus and clears the
+   * heartbeat — no leak, no 501.
+   */
+  @Sse("stream")
+  @ApiOperation({ summary: "Live SSE stream of workspace events for this tenant" })
+  @ApiResponse({
+    status: 200,
+    description: "Event stream (connected, heartbeat, workspace events)",
+  })
+  stream(@TenantId() tenantId: string): Observable<MessageEvent> {
+    const room = `workspace:${tenantId}`;
+    return new Observable<MessageEvent>((subscriber) => {
+      const unsubscribe = this.bus.subscribe((envelope) => {
+        if (envelope.room !== room) return;
+        subscriber.next({ data: { event: envelope.event, payload: envelope.payload } });
+      });
+      subscriber.next({ data: { event: "connected", room } });
+      const heartbeat = setInterval(() => {
+        subscriber.next({ data: { event: "heartbeat", at: new Date().toISOString() } });
+      }, HEARTBEAT_MS);
+      return () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      };
+    });
   }
 }

@@ -30,6 +30,27 @@ Never disable RLS in production. Never add a `SET app.tenant_id` bypass.
 - Local dev only: `POST /api/v1/auth/dev-login` issues a test JWT. It must
   be removed / disabled in production (gate it on `NODE_ENV !== "production"`).
 
+### 2a. Dev → production swap (what changes in code, no live Cognito calls yet)
+
+- **Today (local dev):** symmetric JWTs signed with `JWT_SECRET`
+  (`AuthService.devLogin`). The secret is **required** — there is no
+  fallback value, `dev-login` answers 403 when `NODE_ENV === "production"`,
+  and the API refuses to boot with neither `JWT_SECRET` nor
+  `COGNITO_USER_POOL_ID` set (`apps/api/src/main.ts`).
+- **Production path:** one Cognito user pool, `custom:tenant_id` set at
+  signup and never editable by the client. JWTs are RS256, verified
+  against the pool's JWKS endpoint
+  (`https://cognito-idp.<region>.amazonaws.com/<poolId>/.well-known/jwks.json`).
+  The strategy already exists — `apps/api/src/auth/jwt.strategy.ts`
+  (RS256 + `passportJwtSecret`, reads `custom:tenant_id` /
+  `custom:platform_role`) — and the swap is: `JwtAuthGuard`'s symmetric
+  `verify()` and `socket-auth.ts`'s `verifySocketToken()` both switch to
+  that JWKS verification, and the `JWT_SECRET` boot requirement is
+  dropped. Claim names already handle both shapes (`custom:tenant_id`
+  preferred, `tenantId` fallback), so no caller changes.
+- **After the swap:** `dev-login` is deleted, not just gated; MFA is
+  enforced for platform admins; refresh goes through Cognito.
+
 ## 3. Authorisation — RBAC, per workspace
 
 - Workspace roles: `OWNER, ADMIN, LEAD, MEMBER, VIEWER` (`packages/shared`).

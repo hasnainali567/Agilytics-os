@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { NotificationType } from "@prisma/client";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { TenantId } from "../../common/decorators/tenant.decorator";
@@ -28,6 +28,8 @@ const NOTIFICATION_TYPES: NotificationType[] = [
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
+  @ApiOperation({ summary: "List notifications" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   list(
     @TenantId() tenantId: string,
@@ -47,16 +49,22 @@ export class NotificationsController {
     });
   }
 
+  @ApiOperation({ summary: "Unread count" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get("unread-count")
   unreadCount(@TenantId() tenantId: string, @Req() req: ReqUser) {
     return this.notifications.unreadCount(tenantId, req.user?.id ?? "unknown");
   }
 
+  @ApiOperation({ summary: "Mark all read" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch("read-all")
   markAllRead(@TenantId() tenantId: string, @Req() req: ReqUser) {
     return this.notifications.markAllRead(tenantId, req.user?.id ?? "unknown");
   }
 
+  @ApiOperation({ summary: "Mark read" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch(":id/read")
   markRead(@TenantId() tenantId: string, @Req() req: ReqUser, @Param("id") id: string) {
     return this.notifications.markRead(tenantId, req.user?.id ?? "unknown", id);

@@ -1,5 +1,5 @@
 import { Body, Controller, Post, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { TenantId } from "../../../common/decorators/tenant.decorator";
 import { JwtAuthGuard } from "../../../common/guards/jwt-auth.guard";
 import { ImportService } from "./import.service";
@@ -28,6 +28,8 @@ interface ImportBody {
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
+  @ApiOperation({ summary: "Dry run" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("dry-run")
   async dryRun(@TenantId() tenantId: string, @Body() body: ImportBody) {
     return this.importService.dryRun(
@@ -39,6 +41,8 @@ export class ImportController {
     );
   }
 
+  @ApiOperation({ summary: "Run" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post()
   async run(@TenantId() tenantId: string, @Body() body: ImportBody) {
     // No UserId decorator exists yet; audit log records the tenant + action.

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { createAutomationRuleSchema, updateAutomationRuleSchema } from "@agilytics/shared";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "../../common/guards/permissions.guard";
@@ -38,12 +38,16 @@ type ReqUser = { user?: { id?: string } };
 export class AutomationsController {
   constructor(private readonly automations: AutomationService) {}
 
+  @ApiOperation({ summary: "List automations" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Get()
   @RequireAnyPermission("AUTOMATIONS_MANAGE", "INTEGRATIONS_CONNECT")
   list(@TenantId() tenantId: string) {
     return this.automations.list(tenantId);
   }
 
+  @ApiOperation({ summary: "Create automations" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post()
   @RequirePermissions("AUTOMATIONS_MANAGE")
   create(@TenantId() tenantId: string, @Req() req: ReqUser, @Body() body: unknown) {
@@ -56,12 +60,16 @@ export class AutomationsController {
    * evaluates `ticket.overdue` rules for each. The worker / scheduler
    * calls this endpoint (see apps/worker JobsService `automation.run`).
    */
+  @ApiOperation({ summary: "Sweep" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post("sweep")
   @RequirePermissions("AUTOMATIONS_MANAGE")
   sweep(@TenantId() tenantId: string) {
     return this.automations.runSweep(tenantId);
   }
 
+  @ApiOperation({ summary: "Update automations" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Patch(":id")
   @RequirePermissions("AUTOMATIONS_MANAGE")
   update(
@@ -74,12 +82,16 @@ export class AutomationsController {
     return this.automations.update(tenantId, id, parsed, req.user?.id);
   }
 
+  @ApiOperation({ summary: "Remove automations" })
+  @ApiResponse({ status: 200, description: "Success" })
   @Delete(":id")
   @RequirePermissions("AUTOMATIONS_MANAGE")
   remove(@TenantId() tenantId: string, @Req() req: ReqUser, @Param("id") id: string) {
     return this.automations.remove(tenantId, id, req.user?.id);
   }
 
+  @ApiOperation({ summary: "Toggle" })
+  @ApiResponse({ status: 201, description: "Created" })
   @Post(":id/toggle")
   @RequirePermissions("AUTOMATIONS_MANAGE")
   toggle(@TenantId() tenantId: string, @Req() req: ReqUser, @Param("id") id: string) {

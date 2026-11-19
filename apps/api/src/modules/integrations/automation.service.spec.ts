@@ -43,6 +43,10 @@ function buildService(opts: {
   }[];
   slackPost?: jest.Mock;
   slackConfigured?: boolean;
+  /** Plan of the tenant (for the automation-rule cap); default FREE. */
+  plan?: string;
+  /** Existing rule count for the cap check; defaults to rules.length. */
+  ruleCount?: number;
 }) {
   const rules = opts.rules ?? [];
   const slackPost = opts.slackPost ?? jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
@@ -52,7 +56,11 @@ function buildService(opts: {
     return { id: "notif-1" };
   });
   const prisma = {
+    organisation: {
+      findUnique: jest.fn(async () => ({ plan: opts.plan ?? "FREE" })),
+    },
     automationRule: {
+      count: jest.fn(async () => opts.ruleCount ?? rules.length),
       findMany: jest.fn(async (args: { where?: { isActive?: boolean; trigger?: string } }) => {
         // Mirror the real query: tenant + trigger + isActive:true.
         return rules.filter(
@@ -331,6 +339,30 @@ describe("AutomationService.create — API validation", () => {
     const { service } = buildService({});
     const rule = await service.create("demo-tenant", {
       name: "Done → Slack",
+      trigger: "ticket.done",
+      action: "slack.post",
+      config: { channel: "#agilytics" },
+    });
+    expect(rule.id).toBe("rule-new");
+  });
+
+  it("refuses a 4th rule on the FREE plan (cap 3) and creates none", async () => {
+    const { service, prisma } = buildService({ plan: "FREE", ruleCount: 3 });
+    await expect(
+      service.create("demo-tenant", {
+        name: "Fourth rule",
+        trigger: "ticket.done",
+        action: "slack.post",
+        config: { channel: "#agilytics" },
+      }),
+    ).rejects.toThrow(/allows 3 automation rules/);
+    expect(prisma.automationRule.create).not.toHaveBeenCalled();
+  });
+
+  it("allows the 4th rule on STARTER (cap 10)", async () => {
+    const { service } = buildService({ plan: "STARTER", ruleCount: 3 });
+    const rule = await service.create("demo-tenant", {
+      name: "Fourth rule",
       trigger: "ticket.done",
       action: "slack.post",
       config: { channel: "#agilytics" },

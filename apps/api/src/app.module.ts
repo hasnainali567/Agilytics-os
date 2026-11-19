@@ -12,7 +12,9 @@ import { BoardsModule } from "./modules/boards/boards.module";
 import { DailyUpdatesModule } from "./modules/daily-updates/daily-updates.module";
 import { DocsModule } from "./modules/docs/docs.module";
 import { IdentityModule } from "./modules/identity/identity.module";
+import { InvitesModule } from "./modules/identity/invites/invites.module";
 import { RolesModule } from "./modules/identity/roles/roles.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
@@ -35,10 +37,12 @@ import { RealtimeModule } from "./modules/realtime/realtime.module";
     AuthModule,
     AdminModule,
     AiModule,
+    BillingModule,
     BoardsModule,
     DailyUpdatesModule,
     DocsModule,
     IdentityModule,
+    InvitesModule,
     IntegrationsModule,
     NotificationsModule,
     ProjectsModule,
