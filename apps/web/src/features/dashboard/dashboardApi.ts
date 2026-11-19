@@ -1,10 +1,11 @@
 import { apiUrl } from "../../lib/query-client";
+import { apiFetch } from "../../lib/authFetch";
 import type { DashboardLayoutData, RoleTemplate, SavedLayoutResponse } from "./types";
 
 /** Typed client for GET/PUT /dashboard/layout and POST /dashboard/layout/reset. */
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${apiUrl}${path}`, {
+  const res = await apiFetch(`${apiUrl}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

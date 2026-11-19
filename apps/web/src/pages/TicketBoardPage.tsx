@@ -7,6 +7,7 @@ import { TopBar } from "../components/layout";
 import { DailyUpdateComposer } from "../components/DailyUpdateComposer";
 import { Card } from "../components/ui";
 import { apiUrl } from "../lib/query-client";
+import { apiFetch } from "../lib/authFetch";
 import { fetchBoards, moveTicketToColumn, type BoardWithColumns } from "../lib/api";
 
 type TicketRow = { id: string; title: string; statusId: string | null; boardId: string | null };
@@ -73,7 +74,7 @@ export function TicketBoardPage() {
   const { data, isPending, isError } = useQuery({
     queryKey: ["tickets"],
     queryFn: async () => {
-      const res = await fetch(`${apiUrl}/tickets`);
+      const res = await apiFetch(`${apiUrl}/tickets`);
       if (!res.ok) throw new Error(`Tickets API failed: ${res.status}`);
       return (await res.json()) as TicketRow[];
     },

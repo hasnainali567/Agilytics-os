@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "../../lib/query-client";
+import { apiFetch } from "../../lib/authFetch";
 import { Button, Card, CardHeader } from "../../components/ui";
 
 /**
@@ -45,7 +46,7 @@ export interface IdentityMe {
 }
 
 async function api<T>(path: string, init?: Omit<RequestInit, "headers">): Promise<T> {
-  const res = await fetch(`${apiUrl}${path}`, {
+  const res = await apiFetch(`${apiUrl}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json" },
   });

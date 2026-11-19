@@ -5,6 +5,7 @@ import { TopBar } from "../components/layout";
 import { Card, CardHeader } from "../components/ui";
 import { useConnectionsStore } from "../lib/connections-store";
 import { apiUrl } from "../lib/query-client";
+import { apiFetch } from "../lib/authFetch";
 
 /** Connections hub — Tier 1/2/3 catalog from docs/INTEGRATIONS.md.
  *  Toggles are local until the Integrations API lands; connecting for real
@@ -51,7 +52,7 @@ interface ImportResult {
 }
 
 async function postJson(path: string, body: unknown) {
-  const res = await fetch(`${apiUrl}${path}`, {
+  const res = await apiFetch(`${apiUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -169,7 +170,7 @@ function GitHubCard() {
                   repo,
                   ...(ticketKey.trim() ? { ticketKey: ticketKey.trim() } : {}),
                 });
-                const res = await fetch(`${apiUrl}/integrations/github/pull-requests?${qs}`);
+                const res = await apiFetch(`${apiUrl}/integrations/github/pull-requests?${qs}`);
                 if (!res.ok) throw new Error(`Request failed: ${res.status}`);
                 setPrs((await res.json()) as PullRequest[]);
               } catch (err) {

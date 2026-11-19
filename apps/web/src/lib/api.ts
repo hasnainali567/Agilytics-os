@@ -1,10 +1,11 @@
 import type { Board, BoardColumn, DashboardSummary } from "@agilytics/shared";
 import { apiUrl } from "./query-client";
+import { apiFetch } from "./authFetch";
 
 /** Thin API client — the web app holds no business rules and no mock data.
  *  Pages render loading / empty / error states when the API is down. */
 export async function fetchDashboardSummary(): Promise<DashboardSummary> {
-  const res = await fetch(`${apiUrl}/reporting/dashboard-summary`);
+  const res = await apiFetch(`${apiUrl}/reporting/dashboard-summary`);
   if (!res.ok) {
     throw new Error(`Dashboard API failed: ${res.status}`);
   }
@@ -14,7 +15,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 export async function fetchAdminOrganisations(): Promise<
   { id: string; name: string; slug: string; members: number; projects: number }[]
 > {
-  const res = await fetch(`${apiUrl}/admin/organisations`);
+  const res = await apiFetch(`${apiUrl}/admin/organisations`);
   if (!res.ok) {
     throw new Error(`Admin API failed: ${res.status}`);
   }
@@ -24,7 +25,7 @@ export async function fetchAdminOrganisations(): Promise<
 export type BoardWithColumns = Board & { columns: BoardColumn[] };
 
 export async function fetchBoards(projectId?: string): Promise<BoardWithColumns[]> {
-  const res = await fetch(`${apiUrl}/boards${projectId ? `?projectId=${projectId}` : ""}`);
+  const res = await apiFetch(`${apiUrl}/boards${projectId ? `?projectId=${projectId}` : ""}`);
   if (!res.ok) {
     throw new Error(`Boards API failed: ${res.status}`);
   }
@@ -32,7 +33,7 @@ export async function fetchBoards(projectId?: string): Promise<BoardWithColumns[
 }
 
 export async function moveTicketToColumn(ticketId: string, statusId: string): Promise<void> {
-  const res = await fetch(`${apiUrl}/tickets/${ticketId}/status`, {
+  const res = await apiFetch(`${apiUrl}/tickets/${ticketId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ statusId }),
@@ -55,7 +56,7 @@ export interface TodayFeedEntry {
 }
 
 export async function fetchTodayFeed(): Promise<TodayFeedEntry> {
-  const res = await fetch(`${apiUrl}/daily-updates/today`);
+  const res = await apiFetch(`${apiUrl}/daily-updates/today`);
   if (!res.ok) {
     throw new Error(`Today feed API failed: ${res.status}`);
   }
@@ -74,7 +75,7 @@ export async function postDailyUpdate(
     timeSpentMin?: number;
   },
 ): Promise<void> {
-  const res = await fetch(`${apiUrl}/tickets/${ticketId}/daily-updates`, {
+  const res = await apiFetch(`${apiUrl}/tickets/${ticketId}/daily-updates`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

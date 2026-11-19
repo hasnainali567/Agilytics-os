@@ -1,4 +1,5 @@
 import { apiUrl } from "../../lib/query-client";
+import { apiFetch } from "../../lib/authFetch";
 
 /** Notification Inbox — Phase 1 surface (SYSTEM-DESIGN §3.7, FRONTEND.md §1).
  *  Real data only, from GET /api/v1/notifications. No mock data. */
@@ -49,7 +50,7 @@ export async function fetchNotifications(filter: InboxFilter): Promise<Notificat
   if (filter === "UNREAD") params.set("unreadOnly", "true");
   if (filter !== "ALL" && filter !== "UNREAD") params.set("type", filter);
   const query = params.toString();
-  const res = await fetch(`${apiUrl}/notifications${query ? `?${query}` : ""}`);
+  const res = await apiFetch(`${apiUrl}/notifications${query ? `?${query}` : ""}`);
   if (!res.ok) {
     throw new Error(`Notifications API failed: ${res.status}`);
   }
@@ -57,7 +58,7 @@ export async function fetchNotifications(filter: InboxFilter): Promise<Notificat
 }
 
 export async function fetchUnreadCount(): Promise<number> {
-  const res = await fetch(`${apiUrl}/notifications/unread-count`);
+  const res = await apiFetch(`${apiUrl}/notifications/unread-count`);
   if (!res.ok) {
     throw new Error(`Notifications API failed: ${res.status}`);
   }
@@ -66,14 +67,14 @@ export async function fetchUnreadCount(): Promise<number> {
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  const res = await fetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
+  const res = await apiFetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
   if (!res.ok) {
     throw new Error(`Mark notification read failed: ${res.status}`);
   }
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  const res = await fetch(`${apiUrl}/notifications/read-all`, { method: "PATCH" });
+  const res = await apiFetch(`${apiUrl}/notifications/read-all`, { method: "PATCH" });
   if (!res.ok) {
     throw new Error(`Mark all notifications read failed: ${res.status}`);
   }

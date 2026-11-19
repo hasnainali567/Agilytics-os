@@ -12,10 +12,23 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
+  // Fixed id "demo-tenant": the web app's dev-login (apps/web/src/lib/authFetch.ts)
+  // logs in as tenant demo-tenant, so the seeded org must have that id or
+  // the dashboard queries a tenant with no data.
   const org = await prisma.organisation.upsert({
     where: { slug: "demo" },
     update: {},
-    create: { name: "Demo Organisation", slug: "demo" },
+    create: { id: "demo-tenant", name: "Demo Organisation", slug: "demo" },
+  });
+  const user = await prisma.user.upsert({
+    where: { email: "demo@agilytics.local" },
+    update: {},
+    create: { id: "demo-user", email: "demo@agilytics.local", name: "Demo User" },
+  });
+  await prisma.membership.upsert({
+    where: { tenantId_userId: { tenantId: org.id, userId: user.id } },
+    update: {},
+    create: { tenantId: org.id, userId: user.id, role: "OWNER" },
   });
   const project = await prisma.project.create({
     data: {
