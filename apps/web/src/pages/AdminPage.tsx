@@ -40,7 +40,7 @@ export function AdminPage() {
   const auditLogs = auditQuery.data ?? [];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Platform Admin — whole platform, not one workspace" />
       <main className="space-y-4 p-6">
         <Card>

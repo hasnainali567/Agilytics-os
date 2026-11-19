@@ -1,6 +1,7 @@
 import { DndContext, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import type { DashboardSummary } from "@agilytics/shared";
 import { useState, type ReactNode } from "react";
+import { Select } from "../../components/ui";
 import { WIDGET_REGISTRY } from "./registry";
 import { defaultLayoutFor } from "./templates";
 import { useDashboardLayout } from "./useDashboardLayout";
@@ -78,18 +79,18 @@ export function DashboardGrid({
       )}
       {canEdit && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <select
+          <Select
             value={addType}
             onChange={(e) => setAddType(e.target.value as WidgetType)}
             aria-label="Widget type to add"
-            className="rounded-full border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest"
+            className="w-52"
           >
             {Object.entries(WIDGET_REGISTRY).map(([type, def]) => (
               <option key={type} value={type}>
                 {def.title}
               </option>
             ))}
-          </select>
+          </Select>
           <button
             type="button"
             onClick={() => layoutApi.addWidget(addType)}
@@ -97,20 +98,20 @@ export function DashboardGrid({
           >
             + Add widget
           </button>
-          <select
+          <Select
             value=""
             onChange={(e) => {
               if (e.target.value) layoutApi.applyTemplate(e.target.value as RoleTemplate);
             }}
             aria-label="Apply a role template"
-            className="rounded-full border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest"
+            className="w-52"
           >
             <option value="">Apply template…</option>
             <option value="manager">Manager</option>
             <option value="lead">Lead</option>
             <option value="developer">Developer</option>
             <option value="viewer">Viewer</option>
-          </select>
+          </Select>
           <button
             type="button"
             onClick={() => layoutApi.reset()}

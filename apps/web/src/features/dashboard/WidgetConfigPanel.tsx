@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Field, Input, Select } from "../../components/ui";
 import type { UiPrefs, WidgetConfig, WidgetPlacement } from "./types";
 
 /**
@@ -44,35 +45,28 @@ export function WidgetConfigPanel({
       </div>
 
       {placement.type === "kpi" && (
-        <label className="mt-6 block text-sm">
-          <span className="font-medium text-ink">Stat shown</span>
-          <select
-            value={config.stat ?? "velocity"}
-            onChange={(e) => set({ stat: e.target.value })}
-            className="mt-1 w-full rounded-2xl border border-line bg-panel px-3 py-2"
-          >
+        <Field label="Stat shown" className="mt-6">
+          <Select value={config.stat ?? "velocity"} onChange={(e) => set({ stat: e.target.value })}>
             <option value="velocity">Sprint velocity (points)</option>
             <option value="done">Tickets done</option>
             <option value="overdue">Overdue tickets</option>
             <option value="at-risk">Members at risk</option>
             <option value="projects">Active projects</option>
-          </select>
-        </label>
+          </Select>
+        </Field>
       )}
 
       {placement.type === "velocity" && (
-        <label className="mt-6 block text-sm">
-          <span className="font-medium text-ink">Time range</span>
-          <select
+        <Field label="Time range" className="mt-6">
+          <Select
             value={config.timeRange ?? "6w"}
             onChange={(e) => set({ timeRange: e.target.value as WidgetConfig["timeRange"] })}
-            className="mt-1 w-full rounded-2xl border border-line bg-panel px-3 py-2"
           >
             <option value="4w">Last 4 weeks</option>
             <option value="6w">Last 6 weeks</option>
             <option value="12w">Last 12 weeks</option>
-          </select>
-        </label>
+          </Select>
+        </Field>
       )}
 
       <fieldset className="mt-6">
@@ -82,33 +76,34 @@ export function WidgetConfigPanel({
           project, sprint or team — they never show another scope&apos;s data.
         </p>
         {(["projectId", "sprintId", "teamId"] as const).map((key) => (
-          <label key={key} className="mt-3 block text-sm">
-            <span className="text-muted">
-              {key === "projectId" ? "Project ID" : key === "sprintId" ? "Sprint ID" : "Team ID"}
-            </span>
-            <input
+          <Field
+            key={key}
+            label={
+              key === "projectId" ? "Project ID" : key === "sprintId" ? "Sprint ID" : "Team ID"
+            }
+            className="mt-3"
+          >
+            <Input
               value={config[key] ?? ""}
               onChange={(e) => setScope(key, e.target.value)}
               placeholder="UUID — leave blank for workspace-wide"
-              className="mt-1 w-full rounded-2xl border border-line bg-panel px-3 py-2 font-mono text-xs"
+              className="w-full font-mono text-xs"
             />
-          </label>
+          </Field>
         ))}
       </fieldset>
 
       <fieldset className="mt-6">
         <legend className="text-sm font-medium text-ink">Display</legend>
-        <label className="mt-3 block text-sm">
-          <span className="text-muted">Density</span>
-          <select
+        <Field label="Density" className="mt-3">
+          <Select
             value={ui.density}
             onChange={(e) => onSaveUi({ density: e.target.value as UiPrefs["density"] })}
-            className="mt-1 w-full rounded-2xl border border-line bg-panel px-3 py-2"
           >
             <option value="comfortable">Comfortable</option>
             <option value="compact">Compact</option>
-          </select>
-        </label>
+          </Select>
+        </Field>
         <label className="mt-3 flex items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"

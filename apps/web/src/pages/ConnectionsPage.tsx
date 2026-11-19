@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link2, MessageSquare, Github, FileText, Calendar, Mail, Upload } from "lucide-react";
 import { TopBar } from "../components/layout";
-import { Card, CardHeader } from "../components/ui";
+import { Card, CardHeader, Input, Select } from "../components/ui";
 import { useConnectionsStore } from "../lib/connections-store";
 import { apiUrl } from "../lib/query-client";
 import { apiFetch } from "../lib/authFetch";
@@ -12,12 +12,10 @@ import { apiFetch } from "../lib/authFetch";
  *  Jira/ClickUp import below call the real Phase 1 API — no mock data:
  *  empty states stay empty until a repo is entered or a file uploaded. */
 
-const inputCls =
-  "rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-forest";
 const btnPrimary =
-  "rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
+  "rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
 const btnSecondary =
-  "rounded-lg border border-line bg-panel px-4 py-2 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-50";
+  "rounded-full border border-line bg-panel px-4 py-2.5 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-50";
 
 interface PullRequest {
   id: number;
@@ -72,16 +70,16 @@ function SlackCard() {
         subtitle="Post a message to a channel. Needs SLACK_BOT_TOKEN on the API (Phase 1 placeholder; live OAuth stores a per-workspace token instead)."
       />
       <div className="space-y-3 px-5 py-4">
-        <div className="flex flex-wrap gap-2">
-          <input
-            className={inputCls}
+        <div className="flex flex-wrap items-end gap-2">
+          <Input
+            className="w-36"
             value={channel}
             onChange={(e) => setChannel(e.target.value)}
             placeholder="#agilytics"
             aria-label="Slack channel"
           />
-          <input
-            className={`${inputCls} min-w-64 flex-1`}
+          <Input
+            className="min-w-64 flex-1"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Message to post…"
@@ -134,23 +132,23 @@ function GitHubCard() {
         subtitle="Open PRs for a repo. Filter by ticket key to see the PR list the ticket view shows for that ticket."
       />
       <div className="space-y-3 px-5 py-4">
-        <div className="flex flex-wrap gap-2">
-          <input
-            className={inputCls}
+        <div className="flex flex-wrap items-end gap-2">
+          <Input
+            className="w-40"
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
             placeholder="Owner"
             aria-label="Repo owner"
           />
-          <input
-            className={inputCls}
+          <Input
+            className="w-40"
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             placeholder="Repository"
             aria-label="Repository"
           />
-          <input
-            className={inputCls}
+          <Input
+            className="w-52"
             value={ticketKey}
             onChange={(e) => setTicketKey(e.target.value)}
             placeholder="Ticket key, e.g. ENG-123"
@@ -249,15 +247,15 @@ function ImportCard() {
       />
       <div className="space-y-3 px-5 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            className={inputCls}
+          <Select
+            className="w-36"
             value={source}
             onChange={(e) => setSource(e.target.value as "JIRA" | "CLICKUP")}
             aria-label="Import source"
           >
             <option value="JIRA">Jira</option>
             <option value="CLICKUP">ClickUp</option>
-          </select>
+          </Select>
           <label className={`${btnSecondary} cursor-pointer`}>
             <Upload className="mr-2 inline h-4 w-4" />
             {file ? file.name : "Choose export file (.csv / .json)"}
@@ -430,7 +428,7 @@ const providers = [
 export function ConnectionsPage() {
   const { connected, toggle } = useConnectionsStore();
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Connections" />
       <main className="space-y-4 p-6">
         <SlackCard />

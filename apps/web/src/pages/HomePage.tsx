@@ -26,7 +26,7 @@ export function HomePage() {
   });
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Good morning — here's your team at a glance" />
       <main className="space-y-5 px-6 py-6 lg:px-8">
         {isPending ? (

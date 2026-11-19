@@ -15,6 +15,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { Input } from "./ui";
 import { getCurrentUser, logout } from "../lib/authFetch";
 
 const nav = [
@@ -53,13 +54,16 @@ export function Sidebar() {
     window.location.href = "/login";
   }
 
+  // h-full of the h-screen shell: the sidebar is always exactly
+  // viewport height. The nav scrolls inside itself (min-h-0 +
+  // overflow-y-auto) so the user card stays pinned at the bottom.
   return (
-    <aside className="flex w-60 shrink-0 flex-col rounded-[26px] bg-panel text-ink">
+    <aside className="flex h-full w-60 shrink-0 flex-col rounded-[26px] bg-panel text-ink">
       <div className="px-5 py-5">
         <p className="text-lg font-bold tracking-tight">Agilytics OS</p>
         <p className="text-xs text-muted">AI-powered team OS</p>
       </div>
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3">
         {nav.map((item) => {
           const Icon = item.icon;
           return (
@@ -106,7 +110,7 @@ export function TopBar({ title }: { title: string }) {
   const user = getCurrentUser();
   const displayName = user?.name ?? "Demo User";
   return (
-    <header className="flex items-center justify-between border-b border-line bg-panel px-6 py-4">
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-panel px-6 py-4">
       <h1 className="text-lg font-semibold text-ink">{title}</h1>
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -114,10 +118,10 @@ export function TopBar({ title }: { title: string }) {
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
           />
-          <input
+          <Input
             type="search"
             placeholder="Search (⌘K — coming soon)"
-            className="w-64 rounded-lg border border-line bg-canvas py-2 pl-9 pr-3 text-sm outline-none focus:border-forest"
+            className="w-64 bg-canvas py-2.5 pl-9"
           />
         </div>
         <button

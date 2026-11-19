@@ -1,11 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../components/layout";
-import { Button, Card, CardHeader, StatusPill } from "../components/ui";
+import { Button, Card, CardHeader, Field, Input, Select, StatusPill } from "../components/ui";
 import { createSprint, fetchProjects, fetchSprints } from "../lib/api";
-
-const inputCls =
-  "rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest";
 
 /** Sprints — list from GET /sprints, create via POST /sprints.
  *  A sprint belongs to a project, so the form picks one from GET /projects. */
@@ -54,7 +51,7 @@ export function SprintsPage() {
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "Unknown project";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Sprints" />
       <main className="space-y-4 p-6">
         <Card>
@@ -79,12 +76,10 @@ export function SprintsPage() {
               create.mutate();
             }}
           >
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Project</span>
-              <select
+            <Field label="Project" className="w-56">
+              <Select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className={`${inputCls} mt-1 w-56`}
                 aria-label="Project"
               >
                 <option value="">
@@ -95,44 +90,40 @@ export function SprintsPage() {
                     {p.name}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Name</span>
-              <input
+              </Select>
+            </Field>
+            <Field label="Name" className="w-48">
+              <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Sprint 1"
-                className={`${inputCls} mt-1 w-48`}
+                className="w-full"
               />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Goal</span>
-              <input
+            </Field>
+            <Field label="Goal" className="w-64">
+              <Input
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
                 placeholder="What this sprint delivers"
-                className={`${inputCls} mt-1 w-64`}
+                className="w-full"
               />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Start</span>
-              <input
+            </Field>
+            <Field label="Start">
+              <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className={`${inputCls} mt-1`}
+                className="w-full"
               />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">End</span>
-              <input
+            </Field>
+            <Field label="End">
+              <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className={`${inputCls} mt-1`}
+                className="w-full"
               />
-            </label>
+            </Field>
             <Button>Create sprint</Button>
             {formError ? <p className="w-full text-sm text-red-700">{formError}</p> : null}
           </form>

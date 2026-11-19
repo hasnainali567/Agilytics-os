@@ -24,7 +24,7 @@ export function MembersPage() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Members" />
       <main className="space-y-4 p-6">
         <Card>

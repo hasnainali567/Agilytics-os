@@ -79,6 +79,101 @@ body {
   color: var(--color-forest);
 }
 
+/*
+ * Premium form controls — kill every native system look so no input,
+ * select, date/number picker, checkbox or colour swatch ever renders
+ * as a raw browser control. The primitives in components/ui.tsx own
+ * the shape; these rules own the browser internals they cannot reach.
+ */
+
+/* Never the harsh native blue outline — focus is the soft forest
+ * glow ring on the primitives (focus:ring-4 focus:ring-forest/10). */
+input,
+select,
+textarea {
+  outline: none;
+}
+
+/* Number inputs: no native spinner steppers — values are typed. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Date inputs: muted, clickable calendar indicator; light scheme so
+ * the native popover stays white instead of flipping dark. */
+input[type="date"] {
+  color-scheme: light;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+/* Colour swatches: rounded, borderless, inset in the same hairline
+ * frame as every other control. */
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 10px;
+}
+input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 10px;
+}
+
+/* Select dropdown list: as clean as the browser allows — white,
+ * ink text, no grey system background. */
+select option {
+  background-color: #ffffff;
+  color: #111211;
+}
+
+/* Custom checkbox: rounded square, hairline border, forest fill +
+ * white tick when checked, soft forest focus ring. */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1.5px solid #d6d9d6;
+  background-color: #ffffff;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+input[type="checkbox"]:hover {
+  border-color: #c9cdc9;
+}
+input[type="checkbox"]:checked {
+  border-color: #0f3d20;
+  background-color: #0f3d20;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M4 12.5l5 5L20 6.5'/></svg>");
+}
+input[type="checkbox"]:focus-visible {
+  box-shadow: 0 0 0 4px rgba(15, 61, 32, 0.12);
+}
+
+/* Autofill: never the yellow system fill — keep the warm white. */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #fdfdfa inset;
+  -webkit-text-fill-color: #111211;
+  caret-color: #111211;
+}
+
 /* Hero numbers: 52–56px, weight 500–600, tight tracking, tabular figures. */
 .hero-number {
   font-size: 54px;

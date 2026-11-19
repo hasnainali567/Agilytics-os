@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiUrl } from "../../lib/query-client";
 import { apiFetch } from "../../lib/authFetch";
-import { Button, Card, CardHeader } from "../../components/ui";
+import { Button, Card, CardHeader, Field, Select } from "../../components/ui";
 
 /**
  * Roles & Permissions matrix (decision 21) + role dropdown.
@@ -151,13 +151,11 @@ export function RoleSelect({
   });
 
   return (
-    <label className="block text-sm">
-      <span className="font-medium text-ink">{label}</span>
-      <select
+    <Field label={label}>
+      <Select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={isPending || isError}
-        className="mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm outline-none disabled:opacity-50"
       >
         <option value="">
           {isPending ? "Loading roles…" : isError ? "Could not load roles" : "Select a role"}
@@ -168,8 +166,8 @@ export function RoleSelect({
             {role.isSystem ? " (system)" : ""}
           </option>
         ))}
-      </select>
-    </label>
+      </Select>
+    </Field>
   );
 }
 

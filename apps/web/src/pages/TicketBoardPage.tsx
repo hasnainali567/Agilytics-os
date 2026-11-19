@@ -7,7 +7,7 @@ import { createTicketSchema } from "@agilytics/shared";
 import { Link } from "@tanstack/react-router";
 import { TopBar } from "../components/layout";
 import { DailyUpdateComposer } from "../components/DailyUpdateComposer";
-import { Card } from "../components/ui";
+import { Card, Field, Input, Select } from "../components/ui";
 import {
   createTicket,
   fetchBoards,
@@ -18,9 +18,6 @@ import {
   type BoardWithColumns,
   type TicketWithStatus,
 } from "../lib/api";
-
-const inputCls =
-  "rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-forest";
 
 const PRIORITY_STYLE: Record<string, string> = {
   LOW: "text-muted",
@@ -215,20 +212,18 @@ export function TicketBoardPage() {
     projectsQuery.isError || boardsQuery.isError || ticketsQuery.isError;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Sprints" />
       <main className="space-y-4 p-6">
         <Card className="flex flex-wrap items-end gap-3 p-5">
-          <label className="block text-sm">
-            <span className="font-medium text-ink">Project</span>
-            <select
+          <Field label="Project" className="w-56">
+            <Select
               value={selectedProjectId}
               onChange={(e) => {
                 setSelectedProjectId(e.target.value);
                 setSelectedBoardId("");
                 setSelectedTicketId(null);
               }}
-              className={`${inputCls} mt-1 w-56`}
               aria-label="Project"
             >
               {projects.map((p) => (
@@ -236,17 +231,15 @@ export function TicketBoardPage() {
                   {p.name}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-ink">Board</span>
-            <select
+            </Select>
+          </Field>
+          <Field label="Board" className="w-56">
+            <Select
               value={selectedBoardId}
               onChange={(e) => {
                 setSelectedBoardId(e.target.value);
                 setSelectedTicketId(null);
               }}
-              className={`${inputCls} mt-1 w-56`}
               aria-label="Board"
             >
               {boards.map((b) => (
@@ -255,8 +248,8 @@ export function TicketBoardPage() {
                   {b.isDefault ? " (default)" : ""}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
           <span className="ml-auto text-xs text-muted">
             <Link to="/projects" className="font-medium text-forest hover:underline">
               Manage projects
@@ -278,20 +271,17 @@ export function TicketBoardPage() {
             })}
             className="flex flex-wrap items-end gap-3"
           >
-            <label className="block min-w-64 flex-1 text-sm">
-              <span className="font-medium text-ink">New ticket</span>
-              <input
+            <Field label="New ticket" className="min-w-64 flex-1">
+              <Input
                 {...form.register("title")}
                 placeholder="New ticket title"
-                className={`${inputCls} mt-1 w-full`}
+                className="w-full"
               />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Status</span>
-              <select
+            </Field>
+            <Field label="Status" className="w-40">
+              <Select
                 value={watchedStatusId ?? ""}
                 onChange={(e) => form.setValue("statusId", e.target.value)}
-                className={`${inputCls} mt-1 w-40`}
                 aria-label="Status"
               >
                 {(board?.columns ?? []).map((c) => (
@@ -299,20 +289,18 @@ export function TicketBoardPage() {
                     {c.name}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Priority</span>
-              <select {...form.register("priority")} className={`${inputCls} mt-1 w-32`}>
+              </Select>
+            </Field>
+            <Field label="Priority" className="w-32">
+              <Select {...form.register("priority")}>
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
                 <option value="URGENT">Urgent</option>
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-ink">Estimate (pts)</span>
-              <input
+              </Select>
+            </Field>
+            <Field label="Estimate (pts)" className="w-24">
+              <Input
                 {...form.register("estimate", {
                   setValueAs: (v) => (v === "" ? undefined : Number(v)),
                 })}
@@ -320,9 +308,9 @@ export function TicketBoardPage() {
                 min={0}
                 max={100}
                 placeholder="—"
-                className={`${inputCls} mt-1 w-24`}
+                className="w-full"
               />
-            </label>
+            </Field>
             <button
               type="submit"
               disabled={create.isPending || !selectedProjectId || !board}

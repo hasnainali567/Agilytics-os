@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Navigate, useNavigate } from "@tanstack/react-router";
 import { isAuthenticated, storeSession } from "../lib/authFetch";
 import type { StoredUser } from "../lib/authFetch";
+import { Field, Input } from "../components/ui";
 import { apiUrl } from "../lib/query-client";
 
 /**
@@ -122,20 +123,17 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-ink">
-              Work email
-            </label>
-            <input
+          <Field label="Work email">
+            <Input
               id="login-email"
               type="email"
               autoComplete="email"
               placeholder="demo@agilytics.local"
               value={email}
               onChange={(e) => onEmailChange(e.target.value)}
-              className="w-full rounded-[14px] border border-line bg-canvas px-3 py-2.5 text-sm text-ink outline-none placeholder:text-muted focus:border-forest"
+              className="w-full bg-canvas"
             />
-          </div>
+          </Field>
 
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium text-ink">Sign in as a demo user</legend>

@@ -20,7 +20,7 @@ export function InboxPage() {
   const markAllRead = useMarkAllNotificationsRead();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Inbox" />
       <main className="space-y-4 p-6">
         <Card>

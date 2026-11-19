@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../components/layout";
-import { Button, Card, CardHeader } from "../components/ui";
+import { Button, Card, CardHeader, Field, Input } from "../components/ui";
 import {
   RoleSelect,
   RolesMatrix,
@@ -81,7 +81,7 @@ export function RolesPage() {
   const roles = rolesQuery.data ?? [];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-full flex-col">
       <TopBar title="Roles & permissions" />
       <main className="space-y-4 p-6">
         <Card className="p-5 text-sm">
@@ -133,10 +133,10 @@ export function RolesPage() {
                     ) : null}
                     {editingId === role.id ? (
                       <>
-                        <input
+                        <Input
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="rounded-lg border border-line px-2 py-1 text-sm outline-none"
+                          className="w-48"
                           aria-label="Role name"
                         />
                         <Button
@@ -196,34 +196,31 @@ export function RolesPage() {
                   create.mutate();
                 }}
               >
-                <label className="block text-sm">
-                  <span className="font-medium text-ink">New role name</span>
-                  <input
+                <Field label="New role name" className="w-56">
+                  <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. QA Lead"
-                    className="mt-1 w-56 rounded-lg border border-line px-3 py-2 text-sm outline-none"
+                    className="w-full"
                   />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-medium text-ink">Description</span>
-                  <input
+                </Field>
+                <Field label="Description" className="w-64">
+                  <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What this role does"
-                    className="mt-1 w-64 rounded-lg border border-line px-3 py-2 text-sm outline-none"
+                    className="w-full"
                   />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-medium text-ink">Colour</span>
+                </Field>
+                <Field label="Colour">
                   <input
                     type="color"
                     value={colour}
                     onChange={(e) => setColour(e.target.value)}
-                    className="mt-1 block h-9 w-14 rounded-lg border border-line bg-panel px-1"
+                    className="block h-10 w-14 rounded-2xl border border-line bg-panel px-1 outline-none focus:border-forest focus:ring-4 focus:ring-forest/10"
                     aria-label="Role colour"
                   />
-                </label>
+                </Field>
                 <Button>Create role</Button>
                 {formError ? <p className="w-full text-sm text-red-700">{formError}</p> : null}
               </form>
