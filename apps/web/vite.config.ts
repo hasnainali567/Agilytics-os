@@ -1,9 +1,13 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [react()],
+  // Tailwind v4 needs its Vite plugin — without it, `@import "tailwindcss"`
+  // in index.css is never processed, no utilities or @theme tokens are
+  // generated, and the whole app renders unstyled (data still loads).
+  plugins: [react(), tailwindcss()],
   resolve: {
     // Bundle the shared package from source, not from its CommonJS dist:
     // the CJS dist is for the NestJS API/worker (Node require), but Rollup
