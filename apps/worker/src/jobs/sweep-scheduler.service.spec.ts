@@ -21,6 +21,15 @@ function okFetch(body: unknown = { staleTickets: 0, evaluated: 0, outcomes: [] }
   }));
 }
 
+// The service uses the global fetch; tests stub it here.
+const originalFetch = globalThis.fetch;
+
+function stubFetch(impl: (url: string, init?: unknown) => Promise<unknown>) {
+  const fn = jest.fn(impl);
+  globalThis.fetch = fn as unknown as typeof fetch;
+  return fn;
+}
+
 describe("SweepSchedulerService", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -29,13 +38,13 @@ describe("SweepSchedulerService", () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
+    globalThis.fetch = originalFetch;
   });
 
   it("starts the interval and calls the sweep endpoint on every tick", async () => {
-    const fetchFn = okFetch();
+    const fetchFn = stubFetch(okFetch());
     const scheduler = new SweepSchedulerService(
       fakeConfig({ SWEEP_API_TOKEN: "svc-token", SWEEP_INTERVAL_MS: "1000" }),
-      fetchFn as never,
     );
     scheduler.onModuleInit();
     expect(scheduler.isRunning).toBe(true);
@@ -57,43 +66,37 @@ describe("SweepSchedulerService", () => {
   });
 
   it("does not start without SWEEP_API_TOKEN (auth gap: no silent unauthenticated sweep)", () => {
-    const fetchFn = okFetch();
-    const scheduler = new SweepSchedulerService(
-      fakeConfig({ SWEEP_INTERVAL_MS: "1000" }),
-      fetchFn as never,
-    );
+    stubFetch(okFetch());
+    const scheduler = new SweepSchedulerService(fakeConfig({ SWEEP_INTERVAL_MS: "1000" }));
     scheduler.onModuleInit();
     expect(scheduler.isRunning).toBe(false);
   });
 
   it("does not start when SWEEP_ENABLED=false", () => {
-    const fetchFn = okFetch();
+    stubFetch(okFetch());
     const scheduler = new SweepSchedulerService(
       fakeConfig({ SWEEP_API_TOKEN: "svc-token", SWEEP_ENABLED: "false" }),
-      fetchFn as never,
     );
     scheduler.onModuleInit();
     expect(scheduler.isRunning).toBe(false);
   });
 
   it("runSweepOnce returns ok:false (never throws) when the API answers non-2xx", async () => {
-    const fetchFn = jest.fn(async (_url: string, _init?: unknown) => ({
+    stubFetch(async (_url: string, _init?: unknown) => ({
       ok: false,
       status: 401,
       json: async () => ({ message: "Unauthorized" }),
       text: async () => "Unauthorized",
     }));
-    const scheduler = new SweepSchedulerService(
-      fakeConfig({ SWEEP_API_TOKEN: "svc-token" }),
-      fetchFn as never,
-    );
+    const scheduler = new SweepSchedulerService(fakeConfig({ SWEEP_API_TOKEN: "svc-token" }));
     await expect(scheduler.runSweepOnce()).resolves.toEqual(
       expect.objectContaining({ ok: false, status: 401 }),
     );
   });
 
   it("runSweepOnce skips (never throws) without a token", async () => {
-    const scheduler = new SweepSchedulerService(fakeConfig({}), okFetch() as never);
+    stubFetch(okFetch());
+    const scheduler = new SweepSchedulerService(fakeConfig({}));
     await expect(scheduler.runSweepOnce()).resolves.toEqual(
       expect.objectContaining({ ok: false, skipped: expect.any(String) }),
     );

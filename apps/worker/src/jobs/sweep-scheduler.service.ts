@@ -50,15 +50,13 @@ type FetchFn = (
 export class SweepSchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SweepSchedulerService.name);
   private timer: NodeJS.Timeout | null = null;
-  private readonly fetchFn: FetchFn;
 
-  constructor(
-    private readonly config: ConfigService,
-    fetchFn?: FetchFn,
-  ) {
-    // Injectable fetch so the spec can pass a stub; production uses global fetch.
-    this.fetchFn = fetchFn ?? (fetch as unknown as FetchFn);
-  }
+  // NOTE: this constructor takes ONLY ConfigService. An earlier version took
+  // an optional `fetchFn` second parameter for tests — NestJS DI tried to
+  // resolve it as a provider (the `Function` token) and crashed the worker
+  // at boot with UnknownDependenciesException. Tests stub `global.fetch`
+  // instead; production always uses the global fetch.
+  constructor(private readonly config: ConfigService) {}
 
   get apiBaseUrl(): string {
     return this.config.get<string>("SWEEP_API_BASE_URL") ?? DEFAULT_SWEEP_API_BASE_URL;
@@ -127,7 +125,7 @@ export class SweepSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
     const url = `${this.apiBaseUrl.replace(/\/$/, "")}/api/v1/integrations/automations/sweep`;
     try {
-      const res = await this.fetchFn(url, {
+      const res = await (fetch as unknown as FetchFn)(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: "{}",
