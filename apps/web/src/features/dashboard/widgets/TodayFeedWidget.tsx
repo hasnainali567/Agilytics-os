@@ -13,14 +13,14 @@ export function TodayFeedWidget({ summary, config, onClearScope }: WidgetProps) 
   return (
     <div className="space-y-3 p-5 text-sm">
       <p className="font-medium text-ink">
-        <span className="tabular-nums text-forest">{today.updatedMembers}</span> of{" "}
+        <span className="tabular-nums text-[#6C5CE7]">{today.updatedMembers}</span> of{" "}
         <span className="tabular-nums">{today.totalMembers}</span> updated today
       </p>
       {today.updatedNames.length > 0 && (
         <p className="flex items-start gap-2 rounded-inner bg-pill px-3 py-2">
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-done" aria-hidden />
           <span>
-            <span className="font-medium text-done">Updated: </span>
+            <span className="font-medium text-done-strong">Updated: </span>
             <span className="text-muted">{today.updatedNames.join(", ")}</span>
           </span>
         </p>
@@ -29,7 +29,7 @@ export function TodayFeedWidget({ summary, config, onClearScope }: WidgetProps) 
         <p className="flex items-start gap-2 rounded-inner bg-pill px-3 py-2">
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden />
           <span>
-            <span className="font-medium text-warn">Silent today: </span>
+            <span className="font-medium text-amber-600">Silent today: </span>
             <span className="text-muted">{today.silentNames.join(", ")}</span>
           </span>
         </p>
@@ -38,7 +38,7 @@ export function TodayFeedWidget({ summary, config, onClearScope }: WidgetProps) 
         <p className="flex items-start gap-2 rounded-inner bg-pill px-3 py-2">
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-risk" aria-hidden />
           <span>
-            <span className="font-medium text-risk">Open blockers: </span>
+            <span className="font-medium text-red-600">Open blockers: </span>
             <span className="tabular-nums text-muted">{today.openBlockers}</span>
           </span>
         </p>
@@ -49,7 +49,7 @@ export function TodayFeedWidget({ summary, config, onClearScope }: WidgetProps) 
           <ul className="mt-2 space-y-1.5">
             {today.staleTickets.map((t) => (
               <li key={t.id} className="rounded-inner bg-pill px-3 py-2 text-muted">
-                {t.title} — <span className="tabular-nums text-warn">{t.daysStale} days</span>
+                {t.title} — <span className="tabular-nums text-amber-600">{t.daysStale} days</span>
               </li>
             ))}
           </ul>

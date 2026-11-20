@@ -37,7 +37,7 @@ export function VelocityWidget({ summary, config, onClearScope }: WidgetProps) {
               aria-valuemax={100}
               aria-label={`Week ${point.week}: ${point.completed} of ${point.planned} points done`}
             >
-              <div className="h-full rounded-full bg-lime-deep" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded-full bg-[#6C5CE7]" style={{ width: `${pct}%` }} />
             </div>
           </div>
         );

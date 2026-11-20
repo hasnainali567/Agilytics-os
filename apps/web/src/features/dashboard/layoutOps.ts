@@ -9,7 +9,9 @@ export function sortByPosition(widgets: WidgetPlacement[]): WidgetPlacement[] {
 /**
  * Row-major packing: widgets keep their array order and get fresh
  * x/y on the 12-column grid. Order is the source of truth; x/y are
- * derived so a drag (swap) or resize can never overlap widgets.
+ * derived. The grid renders in a FIXED order (see DashboardGrid), so
+ * pack only keeps the saved record valid for the API (unique ids,
+ * in-bounds x/y/w/h) — it no longer drives placement.
  */
 export function pack(widgets: WidgetPlacement[]): WidgetPlacement[] {
   let x = 0;
@@ -33,14 +35,16 @@ export function addWidget(
   type: WidgetType,
   config: WidgetConfig = {},
 ): DashboardLayoutData {
+  // Default sizes match the FIXED Kanban spans (see DashboardGrid) so
+  // a saved record stays consistent even though render ignores w/h.
   const defaults: Record<WidgetType, { w: number; h: number }> = {
-    kpi: { w: 4, h: 1 },
+    kpi: { w: 3, h: 1 },
     velocity: { w: 8, h: 2 },
     workload: { w: 4, h: 2 },
-    "today-feed": { w: 6, h: 2 },
-    blockers: { w: 6, h: 2 },
+    "today-feed": { w: 4, h: 2 },
+    blockers: { w: 8, h: 2 },
     "at-risk": { w: 6, h: 2 },
-    "my-work": { w: 12, h: 2 },
+    "my-work": { w: 6, h: 2 },
     "ai-brief": { w: 12, h: 1 },
   };
   const { w, h } = defaults[type];
@@ -58,44 +62,6 @@ export function addWidget(
 
 export function removeWidget(layout: DashboardLayoutData, id: string): DashboardLayoutData {
   return { ...layout, widgets: pack(layout.widgets.filter((w) => w.id !== id)) };
-}
-
-export function swapWidgets(
-  layout: DashboardLayoutData,
-  idA: string,
-  idB: string,
-): DashboardLayoutData {
-  const widgets = [...layout.widgets];
-  const a = widgets.findIndex((w) => w.id === idA);
-  const b = widgets.findIndex((w) => w.id === idB);
-  if (a < 0 || b < 0 || a === b) return layout;
-  [widgets[a], widgets[b]] = [widgets[b], widgets[a]];
-  return { ...layout, widgets: pack(widgets) };
-}
-
-export function moveWidget(
-  layout: DashboardLayoutData,
-  id: string,
-  direction: -1 | 1,
-): DashboardLayoutData {
-  const index = layout.widgets.findIndex((w) => w.id === id);
-  const target = index + direction;
-  if (index < 0 || target < 0 || target >= layout.widgets.length) return layout;
-  return swapWidgets(layout, id, layout.widgets[target].id);
-}
-
-export function resizeWidget(
-  layout: DashboardLayoutData,
-  id: string,
-  dw: number,
-  dh: number,
-): DashboardLayoutData {
-  const widgets = layout.widgets.map((w) =>
-    w.id === id
-      ? { ...w, w: Math.min(12, Math.max(1, w.w + dw)), h: Math.min(6, Math.max(1, w.h + dh)) }
-      : w,
-  );
-  return { ...layout, widgets: pack(widgets) };
 }
 
 export function updateWidgetConfig(

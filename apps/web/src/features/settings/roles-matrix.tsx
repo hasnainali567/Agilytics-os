@@ -205,18 +205,18 @@ export function RolesMatrix() {
   const catalog = catalogQuery.data;
 
   if (rolesQuery.isPending || catalogQuery.isPending) {
-    return <Card className="p-6 text-sm text-muted">Loading roles…</Card>;
+    return <Card className="p-6 text-sm text-[#6B7280]">Loading roles…</Card>;
   }
   if (rolesQuery.isError || catalogQuery.isError || !catalog) {
     return (
-      <Card className="p-6 text-sm text-muted">
+      <Card className="p-6 text-sm text-[#6B7280]">
         The API isn't reachable yet — start the API and sign in.
       </Card>
     );
   }
   if (roles.length === 0) {
     return (
-      <Card className="p-6 text-sm text-muted">
+      <Card className="p-6 text-sm text-[#6B7280]">
         No roles yet — the five system roles are seeded when the workspace is created. If this
         workspace predates seeding, ask an admin to run the seed.
       </Card>
@@ -230,25 +230,25 @@ export function RolesMatrix() {
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader
         title="Permissions matrix"
         subtitle="Toggle a permission to grant or revoke it. Changes save immediately and are written to the audit log."
       />
       {save.isError ? (
-        <p className="border-b border-line bg-red-50 px-5 py-3 text-sm text-red-800">
+        <p className="border-b border-[#E5E7EB] bg-[#FEE2E2]/60 px-5 py-3 text-sm text-[#DC2626]">
           Could not save that change — {save.error?.message ?? "the API refused it"}. The matrix
           shows the server state.
         </p>
       ) : null}
       <div className="overflow-x-auto p-5">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[640px] text-left text-[13px]">
           <thead>
-            <tr className="border-b border-line text-xs uppercase text-muted">
+            <tr className="border-b border-[#E5E7EB] text-[11px] uppercase tracking-wide text-[#6B7280]">
               <th className="py-2 pr-3 font-medium">Permission</th>
               {roles.map((role) => (
                 <th key={role.id} className="px-2 py-2 text-center font-medium normal-case">
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 text-[13px] text-[#111827]">
                     {role.colour ? (
                       <span
                         className="inline-block h-2.5 w-2.5 rounded-full"
@@ -257,7 +257,7 @@ export function RolesMatrix() {
                     ) : null}
                     {role.name}
                   </span>
-                  <span className="block text-[11px] font-normal text-muted">
+                  <span className="block text-[11px] font-normal text-[#6B7280]">
                     {role.isSystem ? "system" : "custom"} · {role.memberCount} member
                     {role.memberCount === 1 ? "" : "s"}
                   </span>
@@ -271,21 +271,21 @@ export function RolesMatrix() {
                 <tr>
                   <td
                     colSpan={roles.length + 1}
-                    className="bg-canvas px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted"
+                    className="rounded-[12px] bg-[#E9EEF5] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]"
                   >
                     {AREA_LABELS[group.area] ?? group.area}
                   </td>
                 </tr>
                 {group.permissions.map((perm) => (
-                  <tr key={perm.key} className="border-b border-line last:border-0">
-                    <td className="py-2 pr-3">
-                      <p className="font-medium text-ink">{perm.label}</p>
-                      <p className="text-xs text-muted">{perm.description}</p>
+                  <tr key={perm.key} className="border-b border-[#E5E7EB] last:border-0">
+                    <td className="py-2.5 pr-3">
+                      <p className="font-medium text-[#111827]">{perm.label}</p>
+                      <p className="text-xs text-[#6B7280]">{perm.description}</p>
                     </td>
                     {roles.map((role) => {
                       const granted = role.permissions.includes(perm.key);
                       return (
-                        <td key={role.id} className="px-2 py-2 text-center">
+                        <td key={role.id} className="px-2 py-2.5 text-center">
                           <button
                             type="button"
                             role="switch"
@@ -294,7 +294,7 @@ export function RolesMatrix() {
                             disabled={save.isPending}
                             onClick={() => toggle(role, perm.key)}
                             className={`inline-flex h-6 w-11 items-center rounded-full px-0.5 transition-colors disabled:opacity-50 ${
-                              granted ? "bg-forest" : "bg-line"
+                              granted ? "bg-[#6C5CE7]" : "bg-[#E5E7EB]"
                             }`}
                           >
                             <span
@@ -313,7 +313,7 @@ export function RolesMatrix() {
           </tbody>
         </table>
       </div>
-      <div className="border-t border-line px-5 py-3">
+      <div className="border-t border-[#E5E7EB] px-5 py-3">
         <Button
           variant="secondary"
           onClick={() => queryClient.invalidateQueries({ queryKey: ["roles"] })}

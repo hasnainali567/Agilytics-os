@@ -3,15 +3,21 @@ import { ChevronDown } from "lucide-react";
 import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 /**
- * Shared UI primitives — Agibankz (decision 19).
- * Flat white cards on the warm canvas, 22px radius, hairline borders,
- * no shadows. Deep forest green is the primary action colour ONLY.
- * Status colours carry meaning only (done / in-progress / blocked /
- * at-risk) and trends always carry an explicit + / − sign.
+ * Shared UI primitives — Kanban main design (2026-11-20).
+ * Flat white cards on the #E9EEF5 page, 18px radius, hairline
+ * #E5E7EB borders, very soft shadow. Vivid purple #6C5CE7 is the
+ * primary action colour (buttons, active nav, In Progress pill,
+ * focus); near-black #111827 is text. Status colours carry meaning
+ * only (done / in-progress / blocked / at-risk) and trends always
+ * carry an explicit + / − sign.
  */
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-card border border-line bg-panel ${className}`}>{children}</div>
+    <div
+      className={`rounded-card border border-line bg-card shadow-[0_1px_2px_rgba(17,24,39,0.04)] ${className}`}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -25,12 +31,13 @@ export function CardHeader({ title, subtitle }: { title: string; subtitle?: stri
 }
 
 const badgeStyles: Record<string, string> = {
-  ACTIVE: "bg-done/10 text-done",
-  DONE: "bg-done/10 text-done",
-  IN_PROGRESS: "bg-lime text-forest",
-  BLOCKED: "bg-risk/10 text-risk",
-  OVERLOADED: "bg-risk/10 text-risk",
-  AT_RISK: "bg-warn/10 text-warn",
+  ACTIVE: "bg-done-light text-done-strong",
+  DONE: "bg-done-light text-done-strong",
+  NEW: "bg-done-light text-done-strong",
+  IN_PROGRESS: "bg-accent-light text-accent",
+  BLOCKED: "bg-risk-light text-risk",
+  OVERLOADED: "bg-risk-light text-risk",
+  AT_RISK: "bg-warn-light text-warn",
   TODO: "bg-pill text-muted",
   INACTIVE: "bg-pill text-muted",
 };
@@ -45,19 +52,19 @@ export function StatusPill({ status }: { status: string }) {
 }
 
 /**
- * Shared form controls — Agibankz (decision 19), premium Apple-like
- * treatment. Every text input, select and textarea in the app goes
- * through these so nothing looks like a raw system control: large
- * 16px radius, warm-white panel with a whisper of inner depth,
- * hairline border that deepens on hover, forest focus border + a
- * soft forest glow ring (never the harsh native blue outline — the
- * native outline is killed in index.css), generous padding, smooth
- * transitions on hover/focus. No width in the base — the call site
- * passes its own width (w-full, w-64, …) via className. forwardRef
- * so react-hook-form's register() (which spreads a ref) keeps working.
+ * Shared form controls — Kanban, premium Apple-like treatment. Every
+ * text input, select and textarea in the app goes through these so
+ * nothing looks like a raw system control: large 16px radius, warm-
+ * white card with a whisper of inner depth, hairline border that
+ * deepens on hover, purple accent focus border + a soft purple glow
+ * ring (never the harsh native blue outline — the native outline is
+ * killed in index.css), generous padding, smooth transitions on
+ * hover/focus. No width in the base — the call site passes its own
+ * width (w-full, w-64, …) via className. forwardRef so
+ * react-hook-form's register() (which spreads a ref) keeps working.
  */
 const controlBase =
-  "rounded-2xl border border-line bg-panel px-4 py-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(17,18,17,0.05)] outline-none transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-muted hover:border-[#c9cdc9] focus:border-forest focus:ring-4 focus:ring-forest/10 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-2xl border border-line bg-card px-4 py-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(17,24,39,0.05)] outline-none transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-muted hover:border-[#d1d5db] focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className = "", ...props }, ref) {
@@ -129,11 +136,11 @@ export function Button({
   asChild?: boolean;
 }) {
   const base =
-    "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest";
+    "inline-flex items-center justify-center rounded-[10px] px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
   const style =
     variant === "primary"
-      ? "bg-forest text-white hover:bg-forest/90"
-      : "border border-line bg-panel text-ink hover:bg-canvas";
+      ? "bg-accent text-white hover:bg-accent/90"
+      : "border border-line bg-card text-ink hover:bg-page";
   const Comp = asChild ? Slot : "button";
   return (
     <Comp type={asChild ? undefined : "button"} onClick={onClick} className={`${base} ${style}`}>

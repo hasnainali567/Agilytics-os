@@ -3,9 +3,10 @@ import { Field, Input, Select } from "../../components/ui";
 import type { UiPrefs, WidgetConfig, WidgetPlacement } from "./types";
 
 /**
- * Widget config panel — a side sheet, not a modal, so the user sees
- * the widget change live (FRONTEND.md §1B). Edits apply on save;
- * scope ids are stored as typed and validated by the API on PUT.
+ * Widget config panel — Kanban main design: a side sheet, not a
+ * modal, so the user sees the widget change live (FRONTEND.md §1B).
+ * Edits apply on save; scope ids are stored as typed and validated
+ * by the API on PUT. Save is the vivid purple #6C5CE7 primary.
  */
 export function WidgetConfigPanel({
   placement,
@@ -30,7 +31,7 @@ export function WidgetConfigPanel({
   return (
     <aside
       aria-label={`Configure ${title}`}
-      className="fixed inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col overflow-y-auto border-l border-line bg-panel p-6 shadow-lg"
+      className="fixed inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col overflow-y-auto border-l border-line bg-white p-6 shadow-lg"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-ink">Configure — {title}</h2>
@@ -38,7 +39,7 @@ export function WidgetConfigPanel({
           type="button"
           onClick={onClose}
           aria-label="Close settings"
-          className="rounded-full bg-pill px-3 py-1 text-sm text-ink"
+          className="rounded-full bg-pill px-3 py-1 text-sm text-ink transition-colors hover:bg-line"
         >
           ✕
         </button>
@@ -114,7 +115,7 @@ export function WidgetConfigPanel({
         </label>
         <p className="mt-2 text-xs text-muted">
           Density and sidebar choices save with this layout and sync across devices. The theme
-          itself stays Agibankz — colours are not configurable.
+          itself stays the Kanban main design — colours are not configurable.
         </p>
       </fieldset>
 
@@ -125,14 +126,14 @@ export function WidgetConfigPanel({
             onSave(config);
             onClose();
           }}
-          className="rounded-full bg-forest px-5 py-2 text-sm font-medium text-white"
+          className="rounded-[10px] bg-[#6C5CE7] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5B4BD6]"
         >
           Save widget
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full border border-line bg-panel px-5 py-2 text-sm font-medium text-ink"
+          className="rounded-[10px] border border-line bg-white px-5 py-2 text-sm font-medium text-ink transition-colors hover:bg-pill"
         >
           Cancel
         </button>

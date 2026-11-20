@@ -14,10 +14,7 @@ import {
   type AutomationRule,
   type AutomationSweepResult,
 } from "../lib/api";
-import {
-  AUTOMATION_ACTION_CATALOG,
-  AUTOMATION_TRIGGER_CATALOG,
-} from "@agilytics/shared";
+import { AUTOMATION_ACTION_CATALOG, AUTOMATION_TRIGGER_CATALOG } from "@agilytics/shared";
 
 /** Connections hub — Tier 1/2/3 catalog from docs/INTEGRATIONS.md.
  *  Toggles are local until the Integrations API lands; connecting for real
@@ -26,9 +23,9 @@ import {
  *  empty states stay empty until a repo is entered or a file uploaded. */
 
 const btnPrimary =
-  "rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50";
+  "rounded-[10px] bg-[#6C5CE7] px-4 py-2.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(108,92,231,0.4)] transition-colors hover:bg-[#5B4BD6] disabled:opacity-50";
 const btnSecondary =
-  "rounded-full border border-line bg-panel px-4 py-2.5 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-50";
+  "rounded-[10px] border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-medium text-[#111827] transition-colors hover:bg-[#EFEAFE] hover:text-[#6C5CE7] disabled:opacity-50";
 
 interface PullRequest {
   id: number;
@@ -58,7 +55,7 @@ interface ImportResult {
   linkedParents: number;
   columnsCreated: number;
   unmappedUsers: string[];
-  errors: { row: number; field: string; message: string }[];
+  errors: { row: number; field: string; message: string; severity: string }[];
 }
 
 async function postJson(path: string, body: unknown) {
@@ -121,8 +118,8 @@ function SlackCard() {
             {busy ? "Posting…" : "Post to Slack"}
           </button>
         </div>
-        {status ? <p className="text-xs text-muted">{status}</p> : null}
-        <p className="text-xs text-muted">
+        {status ? <p className="text-xs text-[#6B7280]">{status}</p> : null}
+        <p className="text-xs text-[#6B7280]">
           Automation also posts here: a commit that closes a ticket notifies this channel and
           pre-fills the author&apos;s daily update.
         </p>
@@ -194,24 +191,24 @@ function GitHubCard() {
             {busy ? "Loading…" : "Load PRs"}
           </button>
         </div>
-        {status ? <p className="text-xs text-muted">{status}</p> : null}
+        {status ? <p className="text-xs text-[#6B7280]">{status}</p> : null}
         {prs === null ? (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-[#6B7280]">
             No repo loaded yet — enter an owner and repository above.
           </p>
         ) : prs.length === 0 ? (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-[#6B7280]">
             No open PRs{ticketKey.trim() ? ` referencing ${ticketKey.trim()}` : ""} in this repo.
           </p>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="divide-y divide-[#E5E7EB]">
             {prs.map((pr) => (
               <li key={pr.id} className="flex items-center justify-between gap-3 py-2">
                 <div>
-                  <p className="text-sm font-medium text-ink">
+                  <p className="text-sm font-medium text-[#111827]">
                     #{pr.number} {pr.title}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-[#6B7280]">
                     {pr.headRef} · {pr.state}
                   </p>
                 </div>
@@ -219,7 +216,7 @@ function GitHubCard() {
                   href={pr.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-medium text-forest hover:underline"
+                  className="text-xs font-medium text-[#6C5CE7] hover:underline"
                 >
                   Open PR
                 </a>
@@ -227,11 +224,11 @@ function GitHubCard() {
             ))}
           </ul>
         )}
-        <p className="text-xs text-muted">
+        <p className="text-xs text-[#6B7280]">
           Commit rule: <code>Fixes ENG-123</code> closes the ticket, <code>Starts ENG-123</code>{" "}
           moves it to in-progress, a bare key only links the commit. Merged PRs close their tickets
           the same way. See linked PRs on a ticket from the{" "}
-          <a href="/sprints" className="font-medium text-forest hover:underline">
+          <a href="/sprints" className="font-medium text-[#6C5CE7] hover:underline">
             board
           </a>
           .
@@ -335,9 +332,9 @@ function ImportCard() {
             {busy ? "Working…" : "Import"}
           </button>
         </div>
-        {status ? <p className="text-xs text-muted">{status}</p> : null}
+        {status ? <p className="text-xs text-[#6B7280]">{status}</p> : null}
         {report ? (
-          <div className="space-y-2 rounded-lg border border-line bg-canvas p-3 text-xs text-ink">
+          <div className="space-y-2 rounded-[12px] border border-[#E5E7EB] bg-[#E9EEF5] p-3 text-xs text-[#111827]">
             <p className="font-medium">
               Dry run: {report.projects} project(s), {report.tickets} ticket(s), {report.users}{" "}
               user(s) — would create {report.wouldCreate.projects} project(s),{" "}
@@ -356,22 +353,22 @@ function ImportCard() {
               </p>
             ) : null}
             {report.errors.map((e, i) => (
-              <p key={i} className="text-risk">
+              <p key={i} className="text-[#EF4444]">
                 Error — row {e.row}, {e.field}: {e.message}
               </p>
             ))}
             {report.warnings.map((w, i) => (
-              <p key={i} className="text-muted">
+              <p key={i} className="text-[#6B7280]">
                 Warning — row {w.row}, {w.field}: {w.message}
               </p>
             ))}
             {report.errors.length > 0 ? (
-              <p className="text-risk">Fix the errors above before importing.</p>
+              <p className="text-[#EF4444]">Fix the errors above before importing.</p>
             ) : null}
           </div>
         ) : null}
         {result ? (
-          <div className="space-y-1 rounded-lg border border-line bg-canvas p-3 text-xs text-ink">
+          <div className="space-y-1 rounded-[12px] border border-[#E5E7EB] bg-[#E9EEF5] p-3 text-xs text-[#111827]">
             <p className="font-medium">
               Imported: {result.createdTickets} ticket(s) created, {result.skippedExistingTickets}{" "}
               already imported (skipped), {result.createdProjects} project(s) created,{" "}
@@ -384,13 +381,13 @@ function ImportCard() {
               </p>
             ) : null}
             {result.errors.map((e, i) => (
-              <p key={i} className="text-risk">
+              <p key={i} className="text-[#EF4444]">
                 Skipped row {e.row}, {e.field}: {e.message}
               </p>
             ))}
           </div>
         ) : null}
-        <p className="text-xs text-muted">
+        <p className="text-xs text-[#6B7280]">
           Statuses keep their source names and map to reporting categories (To Do / In Progress /
           Done). Attachments are not in CSV/JSON exports, so they are not imported in this slice.
         </p>
@@ -414,8 +411,12 @@ function AutomationsCard() {
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [trigger, setTrigger] = useState<string>(AUTOMATION_TRIGGER_CATALOG[0]?.trigger ?? "ticket.created");
-  const [action, setAction] = useState<string>(AUTOMATION_ACTION_CATALOG[0]?.action ?? "slack.post");
+  const [trigger, setTrigger] = useState<string>(
+    AUTOMATION_TRIGGER_CATALOG[0]?.trigger ?? "ticket.created",
+  );
+  const [action, setAction] = useState<string>(
+    AUTOMATION_ACTION_CATALOG[0]?.action ?? "slack.post",
+  );
   const [toCategory, setToCategory] = useState("");
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
 
@@ -507,30 +508,37 @@ function AutomationsCard() {
       />
       <div className="space-y-4 px-5 py-4">
         {loading ? (
-          <p className="text-xs text-muted">Loading rules…</p>
+          <p className="text-xs text-[#6B7280]">Loading rules…</p>
         ) : rules.length === 0 ? (
-          <p className="text-xs text-muted">
-            No rules yet. Try: ticket done → post to Slack, or ticket overdue → notify the
-            assignee.
+          <p className="text-xs text-[#6B7280]">
+            No rules yet. Try: ticket done → post to Slack, or ticket overdue → notify the assignee.
           </p>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="divide-y divide-[#E5E7EB]">
             {rules.map((rule) => (
-              <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <li key={rule.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <div>
-                  <p className="text-sm font-medium text-ink">
+                  <p className="text-sm font-medium text-[#111827]">
                     {rule.name}{" "}
-                    <span className="text-xs font-normal text-muted">
+                    <span className="text-xs font-normal text-[#6B7280]">
                       {rule.trigger} → {rule.action}
                     </span>
                   </p>
-                  <p className="text-xs text-muted">
-                    {rule.isActive ? "Enabled" : "Disabled"}
+                  <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[#6B7280]">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        rule.isActive
+                          ? "bg-[#DCFCE7] text-[#16A34A]"
+                          : "bg-[#F2F3F7] text-[#6B7280]"
+                      }`}
+                    >
+                      {rule.isActive ? "Enabled" : "Disabled"}
+                    </span>
                     {typeof rule.config["channel"] === "string" && rule.config["channel"]
-                      ? ` · ${String(rule.config["channel"])}`
+                      ? String(rule.config["channel"])
                       : ""}
                     {typeof rule.config["url"] === "string" && rule.config["url"]
-                      ? ` · ${String(rule.config["url"])}`
+                      ? String(rule.config["url"])
                       : ""}
                   </p>
                 </div>
@@ -563,7 +571,7 @@ function AutomationsCard() {
                   </button>
                   <button
                     type="button"
-                    className={`${btnSecondary} text-risk`}
+                    className={`${btnSecondary} text-[#EF4444] hover:text-[#EF4444]`}
                     disabled={busy}
                     onClick={async () => {
                       setBusy(true);
@@ -585,8 +593,8 @@ function AutomationsCard() {
           </ul>
         )}
 
-        <div className="space-y-3 rounded-2xl border border-line bg-canvas p-4">
-          <p className="text-sm font-medium text-ink">
+        <div className="space-y-3 rounded-[12px] border border-[#E5E7EB] bg-[#E9EEF5] p-4">
+          <p className="text-sm font-semibold text-[#111827]">
             {editingId ? "Edit rule" : "New rule"}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -649,9 +657,7 @@ function AutomationsCard() {
               </Field>
             )}
           </div>
-          {actionDef ? (
-            <p className="text-xs text-muted">{actionDef.description}</p>
-          ) : null}
+          {actionDef ? <p className="text-xs text-[#6B7280]">{actionDef.description}</p> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             {actionDef?.configFields.map((field) => (
               <Field key={field.key} label={field.label} hint={field.hint}>
@@ -695,7 +701,12 @@ function AutomationsCard() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={btnPrimary} disabled={busy} onClick={() => void save()}>
+            <button
+              type="button"
+              className={btnPrimary}
+              disabled={busy}
+              onClick={() => void save()}
+            >
               {busy ? "Saving…" : editingId ? "Save changes" : "Create rule"}
             </button>
             {editingId ? (
@@ -725,13 +736,13 @@ function AutomationsCard() {
               {busy ? "Running…" : "Run overdue sweep"}
             </button>
           </div>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-[#6B7280]">
             The overdue sweep also runs on a schedule — the worker calls the same endpoint.{" "}
             <Zap className="inline h-3 w-3" /> Placeholders in templates: {"{ticket.key}"}{" "}
             {"{ticket.title}"} {"{trigger}"}.
           </p>
         </div>
-        {status ? <p className="text-xs text-muted">{status}</p> : null}
+        {status ? <p className="text-xs text-[#6B7280]">{status}</p> : null}
       </div>
     </Card>
   );
@@ -819,11 +830,11 @@ function WebhookCard() {
       </div>
       <div className="space-y-3 px-5 py-4">
         {configuredUrl ? (
-          <p className="text-xs text-ink">
+          <p className="text-xs text-[#111827]">
             Configured outgoing URL: <code>{configuredUrl}</code> (secret is never shown again).
           </p>
         ) : (
-          <p className="text-xs text-muted">No outgoing webhook configured yet.</p>
+          <p className="text-xs text-[#6B7280]">No outgoing webhook configured yet.</p>
         )}
         <div className="flex flex-wrap items-end gap-2">
           <Input
@@ -882,7 +893,7 @@ function WebhookCard() {
             Send test event
           </button>
         </div>
-        {status ? <p className="text-xs text-muted">{status}</p> : null}
+        {status ? <p className="text-xs text-[#6B7280]">{status}</p> : null}
       </div>
     </Card>
   );
@@ -948,43 +959,53 @@ export function ConnectionsPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-[#E9EEF5]">
       <TopBar title="Connections" />
-      <main className="space-y-4 p-6">
-        <AutomationsCard />
-        <SlackCard />
-        <GitHubCard />
-        <ImportCard />
-        <WebhookCard />
-        <Card>
+      <main className="mx-auto w-full max-w-5xl space-y-5 px-4 py-6 sm:px-6">
+        <header>
+          <p className="text-xs font-medium text-[#6B7280]">Workspace / Connections</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111827]">Connections</h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Connect the tools your team already uses — Slack, GitHub, Notion, Google — and automate
+            the busywork between them.
+          </p>
+        </header>
+
+        <Card className="overflow-hidden">
           <CardHeader
             title="Connect your tools"
             subtitle="Live OAuth (Phase 2) — Connect opens the provider in a new tab; the callback lands on /connections/callback"
           />
-          {connectStatus ? <p className="px-5 pt-3 text-xs text-muted">{connectStatus}</p> : null}
-          <ul className="divide-y divide-line">
+          {connectStatus ? (
+            <p className="border-b border-[#E5E7EB] bg-[#EFEAFE]/50 px-5 py-3 text-xs text-[#111827]">
+              {connectStatus}
+            </p>
+          ) : null}
+          <ul className="divide-y divide-[#E5E7EB]">
             {providers.map((p) => {
               const Icon = p.icon;
               const on = p.key !== null && connectedProviders.includes(p.key);
               return (
-                <li key={p.name} className="flex items-center justify-between px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-5 w-5 text-muted" />
-                    <div>
-                      <p className="text-sm font-medium text-ink">{p.name}</p>
-                      <p className="text-xs text-muted">
+                <li key={p.name} className="flex items-center justify-between gap-3 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[#EFEAFE] text-[#6C5CE7]">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-[#111827]">{p.name}</p>
+                      <p className="truncate text-xs text-[#6B7280]">
                         {p.tier} · {p.desc}
                       </p>
                     </div>
                   </div>
                   {p.key === null ? (
-                    <span className="rounded-full bg-canvas px-4 py-1.5 text-xs font-medium text-muted border border-line">
+                    <span className="shrink-0 rounded-full border border-[#E5E7EB] bg-[#E9EEF5] px-4 py-1.5 text-xs font-medium text-[#6B7280]">
                       Coming soon
                     </span>
                   ) : p.key === "WEBHOOK" ? (
                     <a
                       href="#webhook-config"
-                      className="rounded-full border border-line bg-canvas px-4 py-1.5 text-xs font-medium text-ink hover:bg-canvas"
+                      className="shrink-0 rounded-[10px] border border-[#E5E7EB] bg-white px-4 py-1.5 text-xs font-medium text-[#111827] transition-colors hover:bg-[#EFEAFE] hover:text-[#6C5CE7]"
                     >
                       Configure
                     </a>
@@ -993,7 +1014,7 @@ export function ConnectionsPage() {
                       type="button"
                       disabled={busyProvider === p.key}
                       onClick={() => void disconnectProvider(p.key as string)}
-                      className="rounded-full bg-done px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      className="shrink-0 rounded-[10px] bg-[#22C55E] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#16A34A] disabled:opacity-50"
                     >
                       Connected — Disconnect
                     </button>
@@ -1002,7 +1023,7 @@ export function ConnectionsPage() {
                       type="button"
                       disabled={busyProvider === p.key}
                       onClick={() => void connectProvider(p.key as string)}
-                      className="rounded-full border border-line bg-canvas px-4 py-1.5 text-xs font-medium text-ink disabled:opacity-50"
+                      className="shrink-0 rounded-[10px] bg-[#6C5CE7] px-4 py-1.5 text-xs font-medium text-white shadow-[0_1px_2px_rgba(108,92,231,0.4)] transition-colors hover:bg-[#5B4BD6] disabled:opacity-50"
                     >
                       {busyProvider === p.key ? "Opening…" : "Connect"}
                     </button>
@@ -1012,6 +1033,12 @@ export function ConnectionsPage() {
             })}
           </ul>
         </Card>
+
+        <AutomationsCard />
+        <SlackCard />
+        <GitHubCard />
+        <ImportCard />
+        <WebhookCard />
       </main>
     </div>
   );

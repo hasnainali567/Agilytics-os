@@ -22,7 +22,7 @@ export function EmptyScope({ onClearScope }: { onClearScope: () => void }) {
       <button
         type="button"
         onClick={onClearScope}
-        className="rounded-full bg-forest px-4 py-2 text-sm font-medium text-white hover:bg-forest/90"
+        className="rounded-[10px] bg-[#6C5CE7] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5B4BD6]"
       >
         Clear scope — show workspace data
       </button>

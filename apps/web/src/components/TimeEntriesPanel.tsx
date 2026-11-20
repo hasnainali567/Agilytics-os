@@ -1,13 +1,28 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Clock, Trash2 } from "lucide-react";
 import { Field, Input } from "./ui";
 import { createTimeEntry, deleteTimeEntry, fetchTimeEntries } from "../lib/api";
+
+/** Kanban main design — vivid purple primary on the #E9EEF5 page.
+ *  Literal hex here matches the locked Kanban tokens in index.css. */
+const PURPLE = "#6C5CE7";
 
 function formatMinutes(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+function initialsFor(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 /**
@@ -53,39 +68,60 @@ export function TimeEntriesPanel({ ticketId }: { ticketId: string }) {
   const totalMinutes = query.data?.totalMinutes ?? 0;
 
   return (
-    <div className="mt-4 border-t border-line pt-4">
-      <div className="flex items-baseline justify-between">
-        <h4 className="text-sm font-semibold text-ink">Time tracked</h4>
-        <p className="text-sm text-muted">
-          Total <span className="font-semibold text-ink">{formatMinutes(totalMinutes)}</span>
+    <div className="mt-5 border-t border-[#E5E7EB] pt-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h4 className="flex items-center gap-2 text-sm font-semibold text-[#111827]">
+          <Clock size={15} style={{ color: PURPLE }} />
+          Time tracked
+        </h4>
+        <p className="text-sm text-[#6B7280]">
+          Total{" "}
+          <span className="rounded-full bg-[#F3F0FF] px-2.5 py-0.5 font-semibold tabular-nums text-[#5A4BD1]">
+            {formatMinutes(totalMinutes)}
+          </span>
         </p>
       </div>
 
       {query.isPending ? (
-        <p className="mt-2 text-sm text-muted">Loading time entries…</p>
+        <p className="mt-3 text-sm text-[#6B7280]">Loading time entries…</p>
       ) : query.isError ? (
-        <p className="mt-2 text-sm text-muted">Couldn't load time entries.</p>
+        <p className="mt-3 text-sm text-[#6B7280]">Couldn't load time entries.</p>
       ) : entries.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">No time logged yet — add the first entry below.</p>
+        <p className="mt-3 text-sm text-[#6B7280]">No time logged yet — add the first entry below.</p>
       ) : (
-        <ul className="mt-2 space-y-1.5 text-sm">
-          {entries.map((e) => (
-            <li key={e.id} className="flex items-center gap-2">
-              <span className="font-medium tabular-nums text-ink">{formatMinutes(e.minutes)}</span>
-              <span className="text-muted">
-                {new Date(e.date).toLocaleDateString()} · {e.member?.name ?? "Someone"}
-                {e.note ? ` · ${e.note}` : ""}
-              </span>
-              <button
-                type="button"
-                onClick={() => remove.mutate(e.id)}
-                disabled={remove.isPending}
-                className="ml-auto rounded-full px-2 py-0.5 text-xs font-medium text-muted hover:bg-canvas hover:text-risk disabled:opacity-50"
+        <ul className="mt-3 space-y-2 text-sm">
+          {entries.map((e) => {
+            const name = e.member?.name ?? "Someone";
+            return (
+              <li
+                key={e.id}
+                className="flex items-center gap-2.5 rounded-[12px] bg-[#F2F3F7] px-3 py-2"
               >
-                Remove
-              </button>
-            </li>
-          ))}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EDE9FE] text-[11px] font-bold text-[#6D28D9]">
+                  {initialsFor(name)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="font-semibold tabular-nums text-[#111827]">
+                    {formatMinutes(e.minutes)}
+                  </span>{" "}
+                  <span className="text-[#6B7280]">
+                    {new Date(e.date).toLocaleDateString()} · {name}
+                    {e.note ? ` · ${e.note}` : ""}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => remove.mutate(e.id)}
+                  disabled={remove.isPending}
+                  title="Remove entry"
+                  aria-label="Remove time entry"
+                  className="shrink-0 rounded-full p-1.5 text-[#6B7280] hover:bg-[#FEE2E2] hover:text-[#EF4444] disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -134,14 +170,15 @@ export function TimeEntriesPanel({ ticketId }: { ticketId: string }) {
         <button
           type="submit"
           disabled={create.isPending}
-          className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-[10px] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          style={{ background: PURPLE }}
         >
           {create.isPending ? "Adding…" : "Log time"}
         </button>
       </form>
-      {formError ? <p className="mt-2 text-sm text-red-700">{formError}</p> : null}
+      {formError ? <p className="mt-2 text-sm text-[#B91C1C]">{formError}</p> : null}
       {create.isError && !formError ? (
-        <p className="mt-2 text-sm text-red-700">Couldn't log that time — the API refused it.</p>
+        <p className="mt-2 text-sm text-[#B91C1C]">Couldn't log that time — the API refused it.</p>
       ) : null}
     </div>
   );

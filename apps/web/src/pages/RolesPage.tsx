@@ -40,7 +40,7 @@ export function RolesPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [colour, setColour] = useState("#0F3D20");
+  const [colour, setColour] = useState("#6C5CE7");
   const [formError, setFormError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -81,48 +81,62 @@ export function RolesPage() {
   const roles = rolesQuery.data ?? [];
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-[#E9EEF5]">
       <TopBar title="Roles & permissions" />
-      <main className="space-y-4 p-6">
+      <main className="mx-auto w-full max-w-5xl space-y-5 px-4 py-6 sm:px-6">
+        <header>
+          <p className="text-xs font-medium text-[#6B7280]">Settings / Roles &amp; permissions</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111827]">
+            Roles &amp; permissions
+          </h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Custom roles — owned by your company, not by us. Name a role, then toggle exactly the
+            permissions it gets.
+          </p>
+        </header>
+
         <Card className="p-5 text-sm">
-          <p className="font-semibold">Custom roles — owned by your company, not by us.</p>
-          <p className="mt-1 text-muted">
-            Create roles with any name, then toggle exactly the permissions each role gets. The five
-            system roles (Owner, Admin, Lead, Member, Viewer) are seeded per workspace and can be
-            edited, but a role in use by members cannot be deleted — reassign those members first.
+          <p className="font-semibold text-[#111827]">
+            The five system roles (Owner, Admin, Lead, Member, Viewer) are seeded per workspace.
+          </p>
+          <p className="mt-1 text-[#6B7280]">
+            System roles can be edited, but a role in use by members cannot be deleted — reassign
+            those members first.
           </p>
         </Card>
 
         {meQuery.isPending ? (
-          <Card className="p-6 text-sm text-muted">Checking your permissions…</Card>
+          <Card className="p-6 text-sm text-[#6B7280]">Checking your permissions…</Card>
         ) : meQuery.isError || !meQuery.data ? (
-          <Card className="p-6 text-sm text-muted">
+          <Card className="p-6 text-sm text-[#6B7280]">
             The API isn't reachable yet — start the API and sign in.
           </Card>
         ) : !canManage ? (
           <Card className="p-6 text-sm">
-            <p className="font-semibold">You don't manage roles in this workspace.</p>
-            <p className="mt-1 text-muted">
+            <p className="font-semibold text-[#111827]">
+              You don't manage roles in this workspace.
+            </p>
+            <p className="mt-1 text-[#6B7280]">
               Only a workspace admin (role with the <code>roles.manage</code> permission) can change
               roles. Your role: {meQuery.data.me.roleName ?? "none"}.
             </p>
           </Card>
         ) : (
           <>
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader
                 title="Roles"
                 subtitle="System roles are seeded; custom roles are yours to name."
               />
               {deleteError ? (
-                <p className="border-b border-line bg-red-50 px-5 py-3 text-sm text-red-800">
+                <p className="border-b border-[#E5E7EB] bg-[#FEE2E2]/60 px-5 py-3 text-sm text-[#DC2626]">
                   {deleteError}{" "}
                   <button type="button" className="underline" onClick={() => setDeleteError(null)}>
                     Dismiss
                   </button>
                 </p>
               ) : null}
-              <ul className="divide-y divide-line">
+              <ul className="divide-y divide-[#E5E7EB]">
                 {roles.map((role: RoleSummary) => (
                   <li key={role.id} className="flex items-center gap-3 px-5 py-3 text-sm">
                     {role.colour ? (
@@ -151,9 +165,18 @@ export function RolesPage() {
                       </>
                     ) : (
                       <>
-                        <span className="font-medium text-ink">{role.name}</span>
-                        <span className="text-xs text-muted">
-                          {role.isSystem ? "system" : "custom"} · {role.memberCount} member
+                        <span className="font-medium text-[#111827]">{role.name}</span>
+                        <span className="text-xs text-[#6B7280]">
+                          <span
+                            className={`mr-1.5 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              role.isSystem
+                                ? "bg-[#EFEAFE] text-[#6C5CE7]"
+                                : "bg-[#DCFCE7] text-[#16A34A]"
+                            }`}
+                          >
+                            {role.isSystem ? "system" : "custom"}
+                          </span>
+                          {role.memberCount} member
                           {role.memberCount === 1 ? "" : "s"} · {role.permissions.length}{" "}
                           permissions
                         </span>
@@ -189,7 +212,7 @@ export function RolesPage() {
                 ))}
               </ul>
               <form
-                className="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4"
+                className="flex flex-wrap items-end gap-3 border-t border-[#E5E7EB] bg-[#E9EEF5]/60 px-5 py-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   setFormError(null);
@@ -217,20 +240,26 @@ export function RolesPage() {
                     type="color"
                     value={colour}
                     onChange={(e) => setColour(e.target.value)}
-                    className="block h-10 w-14 rounded-2xl border border-line bg-panel px-1 outline-none focus:border-forest focus:ring-4 focus:ring-forest/10"
+                    className="block h-10 w-14 rounded-[12px] border border-[#E5E7EB] bg-white px-1 outline-none focus:border-[#6C5CE7] focus:ring-4 focus:ring-[#6C5CE7]/10"
                     aria-label="Role colour"
                   />
                 </Field>
-                <Button>Create role</Button>
-                {formError ? <p className="w-full text-sm text-red-700">{formError}</p> : null}
+                <button
+                  type="submit"
+                  className="rounded-[10px] bg-[#6C5CE7] px-4 py-2 text-sm font-medium text-white shadow-[0_1px_2px_rgba(108,92,231,0.4)] transition-colors hover:bg-[#5B4BD6] disabled:opacity-50"
+                  disabled={create.isPending}
+                >
+                  Create role
+                </button>
+                {formError ? <p className="w-full text-sm text-[#EF4444]">{formError}</p> : null}
               </form>
             </Card>
 
             <RolesMatrix />
 
             <Card className="p-5 text-sm">
-              <p className="font-semibold">Assigning roles to members</p>
-              <p className="mt-1 text-muted">
+              <p className="font-semibold text-[#111827]">Assigning roles to members</p>
+              <p className="mt-1 text-[#6B7280]">
                 Pick a role on the member invite/edit screen — the same list, with the same names.
                 Changing a member's role is audited, like every role change here.
               </p>

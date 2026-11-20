@@ -2,8 +2,8 @@ import type { Member } from "@agilytics/shared";
 import type { WidgetProps } from "../types";
 import { EmptyScope, EmptyState, hasScope } from "./EmptyScope";
 
-/** Donut segment colours — Agibankz tokens: lime-deep, forest, done, warn, lime-light, muted. */
-const SEGMENT_COLORS = ["#A3E635", "#0F3D20", "#1FA463", "#FF6A2B", "#C0EE7E", "#8A8F8A"];
+/** Donut segment colours — Kanban palette: purple primary, ink, done, warn, purple tint, muted. */
+const SEGMENT_COLORS = ["#6C5CE7", "#111827", "#22C55E", "#F59E0B", "#C4B5FD", "#94A3B8"];
 
 /** Workload by member — donut of active tickets, with a legend. */
 export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
@@ -71,9 +71,9 @@ export function WorkloadWidget({ summary, config, onClearScope }: WidgetProps) {
               <span
                 className={
                   m.status === "OVERLOADED"
-                    ? "font-medium text-risk"
+                    ? "font-medium text-red-600"
                     : m.status === "AT_RISK"
-                      ? "font-medium text-warn"
+                      ? "font-medium text-amber-600"
                       : ""
                 }
               >

@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../components/layout";
-import { Button, Card, CardHeader, Field, Input, Select, StatusPill } from "../components/ui";
+import { Card, CardHeader, Field, Input, Select, StatusPill } from "../components/ui";
 import { createSprint, fetchProjects, fetchSprints } from "../lib/api";
 
-/** Sprints — list from GET /sprints, create via POST /sprints.
- *  A sprint belongs to a project, so the form picks one from GET /projects. */
+/** Sprints — Kanban main design: white 18px cards on the #E9EEF5 page,
+ *  create form on the shared Input/Select primitives with a vivid
+ *  purple #6C5CE7 submit button, and a 13px table (muted uppercase
+ *  headers, hairline dividers, 11–12px status pills) for the list.
+ *  List from GET /sprints, create via POST /sprints. A sprint belongs
+ *  to a project, so the form picks one from GET /projects. */
 export function SprintsPage() {
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState("");
@@ -51,9 +55,9 @@ export function SprintsPage() {
   const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "Unknown project";
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-[#E9EEF5]">
       <TopBar title="Sprints" />
-      <main className="space-y-4 p-6">
+      <main className="space-y-5 px-6 py-6 lg:px-8">
         <Card>
           <CardHeader title="New sprint" subtitle="Sprints group a project's work into a time box." />
           <form
@@ -124,41 +128,65 @@ export function SprintsPage() {
                 className="w-full"
               />
             </Field>
-            <Button>Create sprint</Button>
-            {formError ? <p className="w-full text-sm text-red-700">{formError}</p> : null}
+            <button
+              type="submit"
+              disabled={create.isPending}
+              className="rounded-[10px] bg-[#6C5CE7] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5B4BD6] disabled:opacity-50"
+            >
+              {create.isPending ? "Creating…" : "Create sprint"}
+            </button>
+            {formError ? <p className="w-full text-sm text-risk">{formError}</p> : null}
           </form>
         </Card>
 
-        {sprintsQuery.isPending ? (
-          <Card className="p-6 text-sm text-muted">Loading sprints…</Card>
-        ) : sprintsQuery.isError || !sprintsQuery.data ? (
-          <Card className="p-6 text-sm text-muted">
-            The sprints API isn't reachable yet — start the API and sign in.
-          </Card>
-        ) : sprints.length === 0 ? (
-          <Card className="p-6 text-sm text-muted">
-            No sprints yet — create your first one above.
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {sprints.map((s) => (
-              <Card key={s.id} className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-ink">{s.name}</h3>
-                    <p className="mt-0.5 text-xs text-muted">{projectName(s.projectId)}</p>
-                  </div>
-                  <StatusPill status={s.status} />
-                </div>
-                {s.goal ? <p className="mt-3 text-sm text-muted">{s.goal}</p> : null}
-                <p className="mt-3 text-xs text-muted">
-                  {new Date(s.startDate).toLocaleDateString()} —{" "}
-                  {new Date(s.endDate).toLocaleDateString()}
-                </p>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Card className="overflow-hidden">
+          <CardHeader title="All sprints" subtitle={`${sprints.length} sprint${sprints.length === 1 ? "" : "s"}`} />
+          {sprintsQuery.isPending ? (
+            <p className="p-5 text-sm text-muted">Loading sprints…</p>
+          ) : sprintsQuery.isError || !sprintsQuery.data ? (
+            <p className="p-5 text-sm text-muted">
+              The sprints API isn't reachable yet — start the API and sign in.
+            </p>
+          ) : sprints.length === 0 ? (
+            <p className="p-5 text-sm text-muted">
+              No sprints yet — create your first one above.
+            </p>
+          ) : (
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  <th className="px-5 py-3 font-medium">Sprint</th>
+                  <th className="px-5 py-3 font-medium">Project</th>
+                  <th className="px-5 py-3 font-medium">Goal</th>
+                  <th className="px-5 py-3 font-medium">Dates</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sprints.map((s) => (
+                  <tr key={s.id} className="border-b border-line last:border-0 hover:bg-[#F7F8FA]">
+                    <td className="px-5 py-3 font-medium text-ink">{s.name}</td>
+                    <td className="px-5 py-3 text-muted">{projectName(s.projectId)}</td>
+                    <td className="px-5 py-3 text-muted">
+                      {s.goal ? (
+                        <span className="block max-w-md truncate">{s.goal}</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 tabular-nums text-muted">
+                      {new Date(s.startDate).toLocaleDateString()} —{" "}
+                      {new Date(s.endDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusPill status={s.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
       </main>
     </div>
   );

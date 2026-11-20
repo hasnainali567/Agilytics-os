@@ -11,7 +11,7 @@ import { WorkloadWidget } from "./widgets/WorkloadWidget";
 
 /**
  * Widget registry — one component per widget type, all built from the
- * shared Agibankz primitives (FRONTEND.md §1B). A custom dashboard
+ * shared Kanban primitives (FRONTEND.md §1B). A custom dashboard
  * still looks like Agilytics because every widget renders through
  * this registry; there is no other way to put a card on the grid.
  */
@@ -26,7 +26,7 @@ export const WIDGET_REGISTRY: Record<WidgetType, WidgetDefinition> = {
   kpi: {
     title: "KPI card",
     description: "One stat + trend (velocity, done, overdue, at-risk…).",
-    defaultSize: { w: 4, h: 1 },
+    defaultSize: { w: 3, h: 1 },
     component: KpiWidget,
   },
   velocity: {
@@ -44,13 +44,13 @@ export const WIDGET_REGISTRY: Record<WidgetType, WidgetDefinition> = {
   "today-feed": {
     title: "Today feed",
     description: "Who updated, who is silent, open blockers.",
-    defaultSize: { w: 6, h: 2 },
+    defaultSize: { w: 4, h: 2 },
     component: TodayFeedWidget,
   },
   blockers: {
     title: "Blockers list",
     description: "Open blockers and stale tickets.",
-    defaultSize: { w: 6, h: 2 },
+    defaultSize: { w: 8, h: 2 },
     component: BlockersWidget,
   },
   "at-risk": {
@@ -62,7 +62,7 @@ export const WIDGET_REGISTRY: Record<WidgetType, WidgetDefinition> = {
   "my-work": {
     title: "My Work",
     description: "Assigned to me, due today / overdue, blocked.",
-    defaultSize: { w: 12, h: 2 },
+    defaultSize: { w: 6, h: 2 },
     component: MyWorkWidget,
   },
   "ai-brief": {

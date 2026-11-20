@@ -3,16 +3,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchDashboardLayout, resetDashboardLayout, saveDashboardLayout } from "./dashboardApi";
 import {
   addWidget,
-  moveWidget,
   pack,
   removeWidget,
-  resizeWidget,
   sortByPosition,
-  swapWidgets,
   updateWidgetConfig,
 } from "./layoutOps";
-import { defaultLayoutFor } from "./templates";
-import type { DashboardLayoutData, RoleTemplate, UiPrefs, WidgetConfig, WidgetType } from "./types";
+import type {
+  DashboardLayoutData,
+  RoleTemplate,
+  UiPrefs,
+  WidgetConfig,
+  WidgetPlacement,
+  WidgetType,
+} from "./types";
 
 /**
  * Server-owned layout, cached locally (FRONTEND.md §1B/§4).
@@ -91,11 +94,6 @@ export function useDashboardLayout() {
     },
   });
 
-  const applyTemplate = useCallback(
-    (template: RoleTemplate) => update(defaultLayoutFor(template)),
-    [update],
-  );
-
   const effective: DashboardLayoutData | null = layout;
 
   return {
@@ -115,21 +113,51 @@ export function useDashboardLayout() {
       },
       [effective, update],
     ),
-    swapWidgets: useCallback(
-      (idA: string, idB: string) => {
-        if (effective) update(swapWidgets(effective, idA, idB));
-      },
-      [effective, update],
-    ),
-    moveWidget: useCallback(
-      (id: string, direction: -1 | 1) => {
-        if (effective) update(moveWidget(effective, id, direction));
-      },
-      [effective, update],
-    ),
-    resizeWidget: useCallback(
-      (id: string, dw: number, dh: number) => {
-        if (effective) update(resizeWidget(effective, id, dw, dh));
+    /**
+     * Visibility toggle (Kanban fixed layout, locked 2026-11-19): show
+     * or hide a whole widget type. One atomic save — toggling KPI on
+     * adds all four KPI cards (velocity / done / at-risk / overdue)
+     * that are missing, each with a unique id. Hiding the last
+     * remaining widget is refused: the API requires >= 1 widget.
+     * Stored x/y/w/h are ignored on render; the grid is fixed.
+     */
+    setWidgetVisible: useCallback(
+      (type: WidgetType, visible: boolean) => {
+        if (!effective) return;
+        let next: DashboardLayoutData;
+        if (visible) {
+          if (type === "kpi") {
+            const have = new Set(
+              effective.widgets
+                .filter((w) => w.type === "kpi")
+                .map((w) => w.config.stat ?? "velocity"),
+            );
+            const missing = ["velocity", "done", "at-risk", "overdue"].filter(
+              (s) => !have.has(s),
+            );
+            if (missing.length === 0) return;
+            const stamp = Date.now().toString(36);
+            const added: WidgetPlacement[] = missing.map((stat, i) => ({
+              id: `kpi-${stat}-${stamp}-${i}`,
+              type: "kpi" as const,
+              x: 0,
+              y: 0,
+              w: 3,
+              h: 1,
+              config: { stat },
+            }));
+            next = { ...effective, widgets: pack([...effective.widgets, ...added]) };
+          } else if (effective.widgets.some((w) => w.type === type)) {
+            return;
+          } else {
+            next = addWidget(effective, type);
+          }
+        } else {
+          const kept = effective.widgets.filter((w) => w.type !== type);
+          if (kept.length === 0 || kept.length === effective.widgets.length) return;
+          next = { ...effective, widgets: pack(kept) };
+        }
+        update(next);
       },
       [effective, update],
     ),
@@ -145,7 +173,6 @@ export function useDashboardLayout() {
       },
       [effective, update],
     ),
-    applyTemplate,
     reset: useCallback(
       (template?: RoleTemplate) => resetMutation.mutate(template),
       [resetMutation],

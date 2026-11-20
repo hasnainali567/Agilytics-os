@@ -22,24 +22,29 @@ export function ConnectionsCallbackPage() {
   }, [ok]);
 
   return (
-    <div className="flex min-h-full items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-[#E9EEF5] p-6">
+      <div className="w-full max-w-md rounded-[18px] border border-[#E5E7EB] bg-white p-6 text-center shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
         {ok ? (
-          <CheckCircle2 className="mx-auto h-10 w-10 text-done" />
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#DCFCE7]">
+            <CheckCircle2 className="h-6 w-6 text-[#16A34A]" />
+          </span>
         ) : (
-          <XCircle className="mx-auto h-10 w-10 text-risk" />
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FEE2E2]">
+            <XCircle className="h-6 w-6 text-[#EF4444]" />
+          </span>
         )}
-        <h1 className="mt-3 text-lg font-semibold text-ink">
+        <h1 className="mt-4 text-lg font-bold text-[#111827]">
           {ok ? `${provider} connected` : `${provider} could not be connected`}
         </h1>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-[#6B7280]">
           {ok
             ? "This tab will close itself — refresh the Connections page to see it listed."
-            : (message ?? "The provider refused the connection. Try again from the Connections page.")}
+            : (message ??
+              "The provider refused the connection. Try again from the Connections page.")}
         </p>
         <a
           href="/connections"
-          className="mt-5 inline-block rounded-full bg-forest px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+          className="mt-5 inline-block rounded-[10px] bg-[#6C5CE7] px-4 py-2.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(108,92,231,0.4)] transition-colors hover:bg-[#5B4BD6]"
         >
           Back to Connections
         </a>

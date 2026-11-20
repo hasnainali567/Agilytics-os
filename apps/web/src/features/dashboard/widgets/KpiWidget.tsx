@@ -1,12 +1,37 @@
 import type { WidgetProps } from "../types";
 import { EmptyScope, EmptyState, hasScope } from "./EmptyScope";
 
-const STATS: Record<string, { label: string; deltaLabel: string }> = {
-  velocity: { label: "Sprint velocity", deltaLabel: "vs last sprint" },
-  done: { label: "Tickets done", deltaLabel: "vs last sprint" },
-  overdue: { label: "Overdue tickets", deltaLabel: "open now" },
-  "at-risk": { label: "Members at risk", deltaLabel: "need attention" },
-  projects: { label: "Active projects", deltaLabel: "vs last sprint" },
+const STATS: Record<string, { label: string; deltaLabel: string; icon: string; tile: string }> = {
+  velocity: {
+    label: "Sprint velocity",
+    deltaLabel: "vs last sprint",
+    icon: "↗",
+    tile: "bg-[#EFEAFE] text-[#6C5CE7]",
+  },
+  done: {
+    label: "Tickets done",
+    deltaLabel: "vs last sprint",
+    icon: "✓",
+    tile: "bg-done-light text-done-strong",
+  },
+  overdue: {
+    label: "Overdue tickets",
+    deltaLabel: "open now",
+    icon: "!",
+    tile: "bg-risk-light text-risk",
+  },
+  "at-risk": {
+    label: "Members at risk",
+    deltaLabel: "need attention",
+    icon: "!",
+    tile: "bg-warn-light text-amber-600",
+  },
+  projects: {
+    label: "Active projects",
+    deltaLabel: "vs last sprint",
+    icon: "▦",
+    tile: "bg-[#EFEAFE] text-[#6C5CE7]",
+  },
 };
 
 /**
@@ -47,11 +72,19 @@ export function KpiWidget({ summary, config, onClearScope }: WidgetProps) {
   const positive = delta >= 0;
   return (
     <div className="flex flex-col justify-center px-5 py-4">
-      <p className="text-[13px] font-medium text-muted">{meta.label}</p>
-      <p className="widget-number mt-1.5 text-ink">{value}</p>
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-sm font-bold ${meta.tile}`}
+        >
+          {meta.icon}
+        </span>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">{meta.label}</p>
+      </div>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-ink">{value}</p>
       <span
         className={`mt-2 inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
-          positive ? "bg-lime text-forest" : "bg-risk/10 text-risk"
+          positive ? "bg-done-light text-done-strong" : "bg-risk-light text-risk"
         }`}
       >
         {positive ? `+${delta}` : `−${Math.abs(delta)}`} {meta.deltaLabel}

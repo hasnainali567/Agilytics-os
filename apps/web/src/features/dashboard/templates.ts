@@ -41,16 +41,24 @@ function layout(widgets: WidgetPlacement[], navItems: string[] = NAV_ALL): Dashb
 }
 
 export const ROLE_TEMPLATES: Record<RoleTemplate, DashboardLayoutData> = {
+  // Manager = the fixed Kanban structure (locked 2026-11-19): 4 KPI
+  // cards in one row, then wide (8) + narrow (4) rows. Positions are
+  // stored for the API record only — DashboardGrid renders in this
+  // fixed order and ignores x/y/w/h. The server copy
+  // (apps/api/.../dashboard-layouts/templates.ts) is synced to the
+  // same structure.
   manager: layout([
-    widget("hero-kpi", "kpi", 0, 0, 4, 1, { stat: "velocity" }),
-    widget("hero-done", "kpi", 4, 0, 4, 1, { stat: "done" }),
-    widget("hero-risk", "kpi", 8, 0, 4, 1, { stat: "at-risk" }),
-    widget("workload", "workload", 0, 1, 4, 2),
-    widget("velocity", "velocity", 4, 1, 4, 2, { timeRange: "6w" }),
+    widget("hero-kpi", "kpi", 0, 0, 3, 1, { stat: "velocity" }),
+    widget("hero-done", "kpi", 3, 0, 3, 1, { stat: "done" }),
+    widget("hero-risk", "kpi", 6, 0, 3, 1, { stat: "at-risk" }),
+    widget("hero-overdue", "kpi", 9, 0, 3, 1, { stat: "overdue" }),
+    widget("velocity", "velocity", 0, 1, 8, 2, { timeRange: "6w" }),
     widget("today", "today-feed", 8, 1, 4, 2),
-    widget("blockers", "blockers", 0, 3, 6, 2),
-    widget("at-risk", "at-risk", 6, 3, 6, 2),
-    widget("ai-brief", "ai-brief", 0, 5, 12, 1),
+    widget("blockers", "blockers", 0, 3, 8, 2),
+    widget("workload", "workload", 8, 3, 4, 2),
+    widget("at-risk", "at-risk", 0, 5, 6, 2),
+    widget("my-work", "my-work", 6, 5, 6, 2),
+    widget("ai-brief", "ai-brief", 0, 7, 12, 1),
   ]),
   lead: layout([
     widget("hero-kpi", "kpi", 0, 0, 6, 1, { stat: "velocity" }),

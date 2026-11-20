@@ -3,13 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createDailyUpdateSchema } from "@agilytics/shared";
-import { Card } from "./ui";
+import { Card, Field, Input, Select, Textarea } from "./ui";
 import { postDailyUpdate } from "../lib/api";
 
 /**
- * Daily Update composer — one update per member per ticket per day.
- * What was done, what is next, blockers, progress %, health, time spent.
- * Posts to POST /tickets/:id/daily-updates (upsert for today).
+ * Daily Update composer — Kanban main design: white 18px card,
+ * labelled fields on the shared Input/Select/Textarea primitives,
+ * vivid purple #6C5CE7 submit button. One update per member per
+ * ticket per day. Posts to POST /tickets/:id/daily-updates (upsert
+ * for today) and refreshes the dashboard summary + Today feed.
  */
 export function DailyUpdateComposer({ tickets }: { tickets: { id: string; title: string }[] }) {
   const queryClient = useQueryClient();
@@ -38,7 +40,7 @@ export function DailyUpdateComposer({ tickets }: { tickets: { id: string; title:
 
   return (
     <Card className="p-5">
-      <h3 className="text-sm font-semibold">Daily update — today</h3>
+      <h3 className="text-sm font-semibold text-ink">Daily update — today</h3>
       <p className="mt-1 text-xs text-muted">
         One update per ticket per day. This is what the Today feed, stale-ticket detection and
         blocker lists read — not comments.
@@ -50,80 +52,89 @@ export function DailyUpdateComposer({ tickets }: { tickets: { id: string; title:
         })}
         className="mt-4 space-y-3"
       >
-        <select
-          value={selected}
-          onChange={(e) => setTicketId(e.target.value)}
-          className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none"
-          aria-label="Ticket"
-        >
-          {tickets.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.title}
-            </option>
-          ))}
-        </select>
-        <textarea
-          {...form.register("doneToday")}
-          placeholder="What did you do today?"
-          rows={2}
-          className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none"
-        />
-        <textarea
-          {...form.register("next")}
-          placeholder="What is next?"
-          rows={1}
-          className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none"
-        />
-        <div className="flex gap-3">
-          <input
-            {...form.register("progressPercent", {
-              setValueAs: (v) => (v === "" ? undefined : Number(v)),
-            })}
-            type="number"
-            min={0}
-            max={100}
-            placeholder="Progress %"
-            className="w-32 rounded-lg border border-line px-3 py-2 text-sm outline-none"
-          />
-          <input
-            {...form.register("timeSpentMin", {
-              setValueAs: (v) => (v === "" ? undefined : Number(v)),
-            })}
-            type="number"
-            min={0}
-            placeholder="Minutes spent"
-            className="w-36 rounded-lg border border-line px-3 py-2 text-sm outline-none"
-          />
-          <select
-            {...form.register("health")}
-            className="rounded-lg border border-line px-3 py-2 text-sm outline-none"
-            aria-label="Health"
+        <Field label="Ticket">
+          <Select
+            value={selected}
+            onChange={(e) => setTicketId(e.target.value)}
+            aria-label="Ticket"
           >
-            <option value="ON_TRACK">On track</option>
-            <option value="AT_RISK">At risk</option>
-            <option value="BLOCKED">Blocked</option>
-          </select>
-          <label className="flex items-center gap-2 text-sm">
+            {tickets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="What did you do today?">
+          <Textarea
+            {...form.register("doneToday")}
+            placeholder="What did you do today?"
+            rows={2}
+            className="w-full"
+          />
+        </Field>
+        <Field label="What is next?">
+          <Textarea
+            {...form.register("next")}
+            placeholder="What is next?"
+            rows={1}
+            className="w-full"
+          />
+        </Field>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Progress %" className="w-32">
+            <Input
+              {...form.register("progressPercent", {
+                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+              })}
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Progress %"
+              className="w-full"
+            />
+          </Field>
+          <Field label="Minutes spent" className="w-36">
+            <Input
+              {...form.register("timeSpentMin", {
+                setValueAs: (v) => (v === "" ? undefined : Number(v)),
+              })}
+              type="number"
+              min={0}
+              placeholder="Minutes spent"
+              className="w-full"
+            />
+          </Field>
+          <Field label="Health" className="w-36">
+            <Select {...form.register("health")} aria-label="Health">
+              <option value="ON_TRACK">On track</option>
+              <option value="AT_RISK">At risk</option>
+              <option value="BLOCKED">Blocked</option>
+            </Select>
+          </Field>
+          <label className="flex items-center gap-2 pb-2.5 text-sm text-ink">
             <input type="checkbox" {...form.register("hasBlocker")} />
             Blocked?
           </label>
         </div>
-        <textarea
-          {...form.register("blockers")}
-          placeholder="Blockers (if any)"
-          rows={1}
-          className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none"
-        />
+        <Field label="Blockers (if any)">
+          <Textarea
+            {...form.register("blockers")}
+            placeholder="Blockers (if any)"
+            rows={1}
+            className="w-full"
+          />
+        </Field>
         <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-[10px] bg-[#6C5CE7] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5B4BD6] disabled:opacity-50"
           >
             {save.isPending ? "Saving…" : "Save today's update"}
           </button>
-          {saved && <span className="text-sm text-green-700">Saved for today.</span>}
-          {save.isError && <span className="text-sm text-red-700">Couldn't save — try again.</span>}
+          {saved && <span className="text-sm text-done-strong">Saved for today.</span>}
+          {save.isError && <span className="text-sm text-risk">Couldn't save — try again.</span>}
         </div>
       </form>
     </Card>

@@ -2,12 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TopBar } from "../components/layout";
 import { Button, Card, CardHeader, Field, Input, Select } from "../components/ui";
-import {
-  addBoardColumn,
-  fetchBoards,
-  updateBoardColumn,
-  type BoardWithColumns,
-} from "../lib/api";
+import { addBoardColumn, fetchBoards, updateBoardColumn, type BoardWithColumns } from "../lib/api";
 
 type Category = "TODO" | "IN_PROGRESS" | "DONE";
 
@@ -15,6 +10,12 @@ const CATEGORY_LABELS: Record<Category, string> = {
   TODO: "To do",
   IN_PROGRESS: "In progress",
   DONE: "Done",
+};
+
+const CATEGORY_PILL: Record<Category, string> = {
+  TODO: "bg-[#F2F3F7] text-[#6B7280]",
+  IN_PROGRESS: "bg-[#EFEAFE] text-[#6C5CE7]",
+  DONE: "bg-[#DCFCE7] text-[#16A34A]",
 };
 
 /** Add-column form for one board — POST /boards/:id/columns. */
@@ -37,7 +38,7 @@ function AddColumnForm({ boardId }: { boardId: string }) {
 
   return (
     <form
-      className="flex flex-wrap items-end gap-3 border-t border-line px-5 py-4"
+      className="flex flex-wrap items-end gap-3 border-t border-[#E5E7EB] bg-[#E9EEF5]/60 px-5 py-4"
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
@@ -74,12 +75,18 @@ function AddColumnForm({ boardId }: { boardId: string }) {
           type="color"
           value={colour}
           onChange={(e) => setColour(e.target.value)}
-          className="block h-10 w-14 rounded-2xl border border-line bg-panel px-1 outline-none focus:border-forest focus:ring-4 focus:ring-forest/10"
+          className="block h-10 w-14 rounded-[12px] border border-[#E5E7EB] bg-white px-1 outline-none focus:border-[#6C5CE7] focus:ring-4 focus:ring-[#6C5CE7]/10"
           aria-label="Column colour"
         />
       </Field>
-      <Button>Add column</Button>
-      {error ? <p className="w-full text-sm text-red-700">{error}</p> : null}
+      <button
+        type="submit"
+        className="rounded-[10px] bg-[#6C5CE7] px-4 py-2 text-sm font-medium text-white shadow-[0_1px_2px_rgba(108,92,231,0.4)] transition-colors hover:bg-[#5B4BD6] disabled:opacity-50"
+        disabled={add.isPending}
+      >
+        Add column
+      </button>
+      {error ? <p className="w-full text-sm text-[#EF4444]">{error}</p> : null}
     </form>
   );
 }
@@ -100,16 +107,16 @@ function BoardCard({ board }: { board: BoardWithColumns }) {
   });
 
   return (
-    <Card key={board.id}>
-      <CardHeader
-        title={board.name}
-        subtitle={board.isDefault ? "Default board" : "Board"}
-      />
+    <Card key={board.id} className="overflow-hidden">
+      <CardHeader title={board.name} subtitle={board.isDefault ? "Default board" : "Board"} />
       <ul className="space-y-2 p-5 text-sm">
         {board.columns.map((c) => (
-          <li key={c.id} className="flex items-center gap-2">
+          <li
+            key={c.id}
+            className="flex flex-wrap items-center gap-2 rounded-[12px] border border-[#E5E7EB] bg-white px-3 py-2"
+          >
             <span
-              className="inline-block h-2.5 w-2.5 rounded-full"
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: c.colour }}
             />
             {editingId === c.id ? (
@@ -132,10 +139,14 @@ function BoardCard({ board }: { board: BoardWithColumns }) {
               </>
             ) : (
               <>
-                <span className="font-medium">{c.name}</span>
-                <span className="text-muted">
-                  · {c.category.replaceAll("_", " ").toLowerCase()} · order {c.order}
+                <span className="font-medium text-[#111827]">{c.name}</span>
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${CATEGORY_PILL[c.category as Category] ?? "bg-[#F2F3F7] text-[#6B7280]"}`}
+                >
+                  {CATEGORY_LABELS[c.category as Category] ??
+                    c.category.replaceAll("_", " ").toLowerCase()}
                 </span>
+                <span className="text-xs text-[#6B7280]">order {c.order}</span>
                 <span className="ml-auto">
                   <Button
                     variant="secondary"
@@ -153,7 +164,7 @@ function BoardCard({ board }: { board: BoardWithColumns }) {
         ))}
       </ul>
       {rename.isError ? (
-        <p className="border-t border-line bg-red-50 px-5 py-3 text-sm text-red-800">
+        <p className="border-t border-[#E5E7EB] bg-[#FEE2E2]/60 px-5 py-3 text-sm text-[#DC2626]">
           Couldn't rename that column — {rename.error?.message ?? "the API refused it"}.
         </p>
       ) : null}
@@ -178,26 +189,37 @@ export function WorkflowSettingsPage() {
   });
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-[#E9EEF5]">
       <TopBar title="Workflow settings" />
-      <main className="space-y-4 p-6">
+      <main className="mx-auto w-full max-w-5xl space-y-5 px-4 py-6 sm:px-6">
+        <header>
+          <p className="text-xs font-medium text-[#6B7280]">Settings / Workflows</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111827]">
+            Workflow settings
+          </h1>
+          <p className="mt-1 text-sm text-[#6B7280]">
+            Custom workflows — owned by your company, not by us. Rename, add or remove any status.
+          </p>
+        </header>
+
         <Card className="p-5 text-sm">
-          <p className="font-semibold">Custom workflows — owned by your company, not by us.</p>
-          <p className="mt-1 text-muted">
-            Every project gets a default board (Backlog / To Do / In Progress / Review / Done). Your
-            workspace admin can create more boards, and rename, add or remove any status —
+          <p className="font-semibold text-[#111827]">
+            Every project gets a default board (Backlog / To Do / In Progress / Review / Done).
+          </p>
+          <p className="mt-1 text-[#6B7280]">
+            Your workspace admin can create more boards, and rename, add or remove any status —
             names have no restrictions. Only the category (to do / in progress / done) drives
             reporting, so dashboards keep working whatever you call things.
           </p>
         </Card>
         {isPending ? (
-          <Card className="p-6 text-sm text-muted">Loading boards…</Card>
+          <Card className="p-6 text-sm text-[#6B7280]">Loading boards…</Card>
         ) : isError || !data ? (
-          <Card className="p-6 text-sm text-muted">
+          <Card className="p-6 text-sm text-[#6B7280]">
             The API isn't reachable yet — start the API and sign in.
           </Card>
         ) : data.length === 0 ? (
-          <Card className="p-6 text-sm text-muted">
+          <Card className="p-6 text-sm text-[#6B7280]">
             No boards yet — create a project and its default board appears here.
           </Card>
         ) : (

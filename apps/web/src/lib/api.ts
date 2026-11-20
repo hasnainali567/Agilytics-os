@@ -1,6 +1,7 @@
 import type {
   Board,
   BoardColumn,
+  Comment,
   DashboardSummary,
   Project,
   Sprint,
@@ -310,6 +311,22 @@ export async function createTimeEntry(
 
 export async function deleteTimeEntry(ticketId: string, entryId: string): Promise<void> {
   await apiJson(`/tickets/${ticketId}/time-entries/${entryId}`, { method: "DELETE" });
+}
+
+/** Ticket comments (GET/POST /tickets/:id/comments, DELETE /comments/:id). */
+export async function fetchComments(ticketId: string): Promise<Comment[]> {
+  return apiJson<Comment[]>(`/tickets/${ticketId}/comments`);
+}
+
+export async function createComment(ticketId: string, body: string): Promise<Comment> {
+  return apiJson<Comment>(`/tickets/${ticketId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  await apiJson(`/comments/${commentId}`, { method: "DELETE" });
 }
 
 /** Per-sprint / per-project / workspace-wide time report (GET /reporting/time). */

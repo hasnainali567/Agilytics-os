@@ -5,16 +5,21 @@
 - **Vite SPA, React 19 + TypeScript strict.** The whole app sits behind a
   login, so there is no SSR and no SEO — no Next.js. The API is
   server-by-default; the web is thin client islands over it.
-- **Design system — Agibankz (locked 2026-11-17, decision 19).**
-  The Agibankz Web Banking Dashboard pin
-  (`https://www.pinterest.com/pin/834151162281618403/`, Delibix) is THE
-  design for the whole product. Pin 1 (Employee Dashboard) is demoted to a
-  supporting reference only (its KPI cards / member table are still useful
-  patterns); Pin 3 (DealDeck) stays the Reports layout; Pin 5 stays the
-  Connections toggles pattern. Full tokens, sidebar spec, hero and
-  bottom-column mappings, and component rules: §1A below. **Superseded:**
-  the old direction — dark navy sidebar, white canvas, deep-blue primary —
-  is no longer the design; do not use it anywhere new.
+- **Design system — Kanban board design ("Creating an application for
+  aero.com", locked 2026-11-19, decision 25).** The Kanban board image
+  Jhon shared is THE design for the whole product; Pin 3 (DealDeck)
+  is the Reports layout (§1D). Pin 5 stays the Connections toggles
+  pattern. Full tokens, rail spec, top bar,
+  header and grid mappings, and component rules: §1A below.
+  **Superseded:** Pin 1 Employee Management Dashboard — it was THE
+  design for a few hours on 2026-11-19 and was superseded the same
+  day by this Kanban design (decision 25); kept only as history in
+  DESIGN-DECISIONS.md #23. Also superseded: the Agibankz banking
+  design (2026-11-17 → 2026-11-19) — mapping a banking UI onto a PM
+  app is not feasible; lime/forest tokens are removed from the code
+  and kept only as history in DESIGN-DECISIONS.md #19. Also
+  superseded: the dark navy sidebar / white canvas / deep-blue
+  primary direction.
 - **Home is Today / My Work first, not a social feed.** Top of Home:
   My Work (assigned to me, due today/overdue, blocked, mentioned, my
   Daily Updates due), then the team Today feed (who updated / silent /
@@ -28,148 +33,184 @@
   WIP, workload, **sprint burndown**, **time-in-status**, health badges
   computed from Daily Updates + blockers + stale with a written rule,
   and a My Work strip on top. **The dashboard is customisable per
-  user** — widgets, layout, and UI prefs (§1B), Agibankz theme fixed.
+  user** — widget visibility only (§1B), Kanban theme fixed. Layout is
+  fixed; there is no drag/resize (decision 24).
 - **Roadmap / Timeline view (Phase 2):** epics + sprints on a date
   axis; Calendar view from due dates.
 - **Rules that keep the v1 mess out:** small files (~150 lines), one
   component per file, reuse-before-create, shared dashboard primitives
   only — no hand-rolled panels per route, no 25KB monolithic sidebar.
-  (The Agibankz sidebar in §1A is one shared shell component, not a
-  per-route sidebar.)
+  (The icon rail + top nav in §1A are one shared shell component, not
+  per-route navigation.)
 
-### 1A. Design system — Agibankz (THE design, locked 2026-11-17)
+### 1A. Design system — Kanban board design (THE design, locked 2026-11-19, decision 25)
 
-Source: Agibankz Web Banking Dashboard by Delibix,
-`https://www.pinterest.com/pin/834151162281618403/`. Follow the same
-colour theme, fonts, corners, spacing, aesthetic and vibe — fresh,
-playful, airy, rounded-everything, lime pop on white, credible not
-corporate. The product must feel fresh while looking at it and make
-team members feel good, with extreme good UX. Hex values are close
-visual estimates from the flat pin image and are labelled `~` in this
-doc; the build must pin exact values in the Tailwind theme and treat
-them as the single source of truth.
+Source: the Kanban board image Jhon shared ("Creating an application
+for aero.com"). This is a UI designed for the product being built (a
+project-management board app), so its layout, palette and patterns
+map to Agilytics directly — unlike the superseded Agibankz banking
+pin. Hex values are close visual estimates from the image and are
+labelled `~`; the Tailwind theme in `apps/web/src/index.css` is the
+single source of truth.
 
-**IMPORTANT CORRECTION — no dark hero card.** There is NO dark hero
-card in this pin. The hero is a two-card split: a white card (57%) +
-a bright lime card (43%). Do NOT describe or build a dark hero card
-anywhere in this product.
+**History (one line):** Pin 1 Employee Management Dashboard
+(`https://au.pinterest.com/pin/1101693127633567775/`) was THE design
+for a few hours on 2026-11-19 and was superseded the same day by
+this Kanban design (decision 25); its tokens are kept only as
+history in DESIGN-DECISIONS.md #23 — do not build to them.
 
 #### Tokens
 
-| Token                      | Value                                  | Use                                                                                                                              |
-| -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| App background             | `~#F4F4F2` warm off-white              | Page canvas                                                                                                                      |
-| Cards                      | `#FFFFFF`                              | All cards                                                                                                                        |
-| Outer canvas               | `~#E8E8E8`                             | Shell behind the app background                                                                                                  |
-| Primary accent lime        | `~#A9E85C` (range `#A3E635`–`#B1F06A`) | Hero highlight card, active nav state, key accents                                                                               |
-| Lighter lime sub-cards     | `~#C0EE7E`                             | Sub-cards inside the lime hero card                                                                                              |
-| Deeper lime                | `~#A3E635`                             | Donut / progress fills                                                                                                           |
-| Deep forest green          | `~#0F3D20` (range `#0E3B1F`–`#123F22`) | **Primary dark/action colour — use ONLY for the primary button, PRIORITY-style pills and % badges.** Never as a page background. |
-| Primary text               | `~#111211` near-black                  | Headings, hero numbers, values                                                                                                   |
-| Secondary / muted text     | `~#8A8F8A`                             | Body secondary, chart labels                                                                                                     |
-| Small labels               | `~#7A7F7A`                             | Section labels                                                                                                                   |
-| Inactive nav               | `~#9AA09A`                             | Unselected nav items                                                                                                             |
-| Borders / dividers / track | `~#E5E7E5`–`#E8EAE8`                   | Card borders, dividers, progress tracks                                                                                          |
-| Donut track                | `~#E3E6E3`                             | Donut background ring                                                                                                            |
-| Pill background            | `~#F0F0EE`                             | Neutral pill / chip background                                                                                                   |
-| Positive green             | `~#1FA463`                             | Done / positive trends, with explicit `+`                                                                                        |
-| Negative red               | `~#E5484D`                             | At-risk / negative trends, with explicit `−`                                                                                     |
-| Orange accent              | `~#FF6A2B` / `~#F96D2E`                | Targets, confirmations, highlights                                                                                               |
-| Notification dot           | `~#FF3B30`                             | Unread dot                                                                                                                       |
+| Token                  | Value                    | Use                                      |
+| ---------------------- | ------------------------ | ---------------------------------------- |
+| Page background        | Very light blue-grey `#E9EEF5` | Page canvas                        |
+| Cards                  | `#FFFFFF`                | All cards                                |
+| Primary vivid purple   | `#6C5CE7`                | Create button, primary actions, active states |
+| Near-black             | `#111827`                | Headings, values, body text              |
+| Accent light           | `#EFEAFE`                | Purple accent fills                      |
+| Green                  | `#22C55E`                | New pill, done / positive                |
+| Pastel tags            | Soft pastel fills (lavender, mint, peach, sky) | Tag chips on cards |
+| Positive green         | `#22C55E` on `#DCFCE7`   | Done / positive trends, with explicit `+`|
+| Negative red           | `#EF4444` on `#FEE2E2`   | At-risk / negative trends, with `−`      |
+| Orange accent          | `#F59E0B` on `#FEF3C7`   | Warnings / targets                       |
+| Muted text             | `#6B7280`                | Body secondary                           |
+| Inactive nav           | `#94A3B8`                | Unselected nav items                     |
+| Borders / dividers     | `#E5E7EB`                | Card borders, dividers, tracks           |
+| Neutral pill           | `#F2F3F7`                | Neutral pill / chip background           |
 
-Status colours are used only for meaning (done green, in-progress lime/
-forest, blocked/at-risk red, amber/orange for warnings) — never as
+Status colours are used only for meaning (done green, in-progress
+purple accent, blocked/at-risk red, amber/orange for warnings) — never as
 decoration. Trends always carry an explicit `+` or `−` sign with the
 colour, never colour alone.
 
 #### Typography
 
-Geometric / humanist sans, closest to Inter / Plus Jakarta Sans /
-Poppins. No serif anywhere.
+Inter (loaded via Google Fonts). No serif anywhere.
 
-| Element      | Size / weight                                            |
-| ------------ | -------------------------------------------------------- |
-| Hero numbers | 52–56px, weight 500–600, tight tracking, tabular figures |
-| Card titles  | 18–20px, weight 600                                      |
-| Labels       | 13px, weight 500, grey                                   |
-| Body         | 14–15px, weight 400–500                                  |
-| Micro-labels | 10px, letter-spaced caps                                 |
+| Element       | Size / weight            |
+| ------------- | ------------------------ |
+| Page heading  | 20–24px, weight 700      |
+| Section title | 14–16px, weight 600      |
+| KPI label     | 11–12px, grey            |
+| KPI number    | 20–24px, weight 700      |
+| Body / table  | 12–13px, weight 400–500  |
+| Status pills  | 11–12px, weight 500      |
 
-#### Corners and spacing
+#### Corners, spacing, elevation
 
-- **Corners:** outer shell 24–28px; hero / bottom cards 20–24px;
-  inner sub-cards 12–16px; buttons, nav pills, badges and progress
-  bars fully pill `999px`; icon chips and avatars 50% circles; donut
-  a full circle with a thick stroke.
-- **Spacing:** outer padding ~24px; gutters 16–20px; card padding
-  20–24px; section gaps ~16px; list rows 12–16px; ~8px label-to-value
-  gaps.
-- **Elevation:** flat, almost no shadows — only a very soft shadow
-  under the outer shell. No gradients, no glass, no dark surfaces.
+- **Corners:** large cards 16–20px; inner blocks ~12px; pills
+  (nav pills, date pill, status pills) `999px`; buttons 10–12px;
+  icon tiles / avatars 50% circles.
+- **Spacing:** outer padding ~16–24px; gutters 16–20px; card
+  padding 16–24px; section gaps ~16px; list rows 12–16px.
+- **Elevation:** white cards, flat with a very soft shadow + 1px
+  `#E5E7EB` border. No gradients, no glass, no dark surfaces.
 
-#### The one addition — left sidebar, in the SAME tokens
+#### Shell — thin icon rail + dropdown top bar
 
-The pin has no sidebar; Agilytics adds exactly one: a left sidebar
-built from the same tokens, so it feels like the next level of this
-design, not a different product. Warm off-white background (`~#F4F4F2`),
-white cards, lime (`~#A9E85C`) active state, deep forest green
-(`~#0F3D20`) primary, pill nav items (`999px`), 20–24px radii, same
-fonts and spacing as the rest of the app.
+The design has NO wide labelled sidebar. Agilytics keeps exactly
+its shell:
 
-Sidebar contents, top to bottom: workspace switcher (top), then
-Home/Today, Projects, Boards, Sprints, Reports, Doc Hub (Project
-Docs), Connections, Automations, AI, Admin — then a user card at the
-bottom. Active nav item: lime pill background with forest-green text/
-icon. Inactive items: `~#9AA09A` text. Notification dot `~#FF3B30`
-on items with unread activity. The sidebar is a single shared shell
-component; no route builds its own navigation.
+- **Thin vertical icon rail** on the far left (64px), fixed
+  full-height; only the content column scrolls. User avatar at the
+  top, then a **MENU** group (icon-only nav: Dashboard, Projects,
+  Boards, Sprints, Members, Reports, Inbox, Connections, Workflows,
+  Roles, Admin), then an **APPS** group for the connected
+  integrations (Slack, GitHub, Notion, Google), and a theme toggle
+  at the bottom. Active rail icon: vivid purple `#6C5CE7`
+  filled/highlighted square.
+- **Top bar:** **Your work / Projects / Filters / Dashboards**
+  dropdowns on the left; a purple **Create** button and a **Voice
+  search** pill; search, messages, bell and settings icons at the
+  right. The messages icon links to `/inbox` for now — team chat is
+  a future idea, not built (decision 26).
+- **Header row:** breadcrumb (`Projects / {project} / {board}`) above
+  a big bold page title on the left; member avatar stack + Invite
+  action and a view switcher on the right.
 
-#### Hero pattern (adapted — PM content, never banking content)
+#### Content grid (adapted — PM content, never HR/banking content)
 
-Two-card split, same proportions as the pin (white 57% / lime 43%):
-
-- **White card — the main KPI/hero number** (e.g. sprint velocity /
-  active work): a huge friendly numeral (52–56px), an eye toggle to
-  hide/show it, a dark forest-green filled pill primary button, an
-  outlined white pill secondary button, and a big lime circle arrow
-  button bottom-right.
-- **Lime card — the highlight card** (e.g. AI insight / weekly
-  highlight): a dark-green PRIORITY-style pill, a huge number, a white
-  pill badge, and two lighter-lime (`~#C0EE7E`) sub-cards inside it.
-
-#### Bottom 3-column pattern (adapted — same layout, PM content)
-
-The pin's Spending donut / Earning progress bars / Transactions list
-maps 1:1 to Agilytics as **Workload donut / Velocity progress bars /
-Activity feed** — same layout, same components, same radii and
-spacing, PM content only, never banking content.
+- **Row 1:** 4 KPI cards in one row (sprint velocity / tickets done /
+  members at risk / open blockers), each with a tinted icon tile
+  top-left and a small delta.
+- **Row 2:** wide card left + narrower column right (Today feed /
+  board summary wide; events / blockers narrow).
+- **Row 3:** wide table left + narrower card right (tickets or
+  members table wide; workload or sprint summary narrow).
+- The Reports page follows Pin 3 instead — see §1D.
 
 #### Buttons and components
 
-- **Primary:** dark forest-green filled pill (`999px`).
-- **Secondary:** white outlined pill (`999px`).
-- **Icon action:** lime circle icon-button (50%).
-- **Nav:** pill nav with lime active state.
-- **Icons:** thin line icons in light-grey circles.
-- **Trends:** credits green with explicit `+`, debits red with
-  explicit `−` — adapted to PM as done/at-risk trends with the same
-  `+`/`−` and colour rules.
-- **Shared primitives** (`KpiCard`, `ChartCard`, `HealthBadge`,
-  `InsightCallout`, `WorkloadBar`, hero split, donut, progress bars,
-  activity rows) are the only way to build a dashboard surface, and
-  they all ship in these tokens. Any component that does not match
-  this section is wrong by definition and gets fixed before ship.
+- **Primary:** vivid purple `#6C5CE7` filled button, 10–12px radius.
+- **Secondary:** white outlined button, 10–12px radius.
+- **Nav:** rail icons with a purple `#6C5CE7` active state; top-bar
+  dropdowns for Your work / Projects / Filters / Dashboards.
+- **Icons:** thin line icons (Lucide), 17px in nav.
+- **Inputs:** premium Apple-like custom inputs (16px radius,
+  warm-white, hairline border deepening on hover, soft purple
+  `#6C5CE7` focus glow, no native controls) — focus uses the
+  vivid purple accent.
+- **Shared primitives** (`Card`, `StatusPill`, `Button`, `Input`,
+  `Select`, `Textarea`, `Field` in `components/ui.tsx`) are the only
+  way to build a surface; any component that does not match this
+  section is wrong by definition and gets fixed before ship.
 
-### 1B. Customisable Dashboard + UI (locked 2026-11-17, decision 20)
+#### Board — Kanban design (locked 2026-11-19, decision 25)
+
+The board is the main Kanban design applied to a Kanban surface:
+
+- **Project header:** breadcrumb (`Projects / {project} / {board}`)
+  on the left, member avatar stack + an Invite action on the right,
+  above the columns. Project/board pickers stay in the card below
+  the header.
+- **Column headers:** a coloured pill per status — the status colour
+  as the pill fill/dot, status name, ticket count and total hours
+  (`{count} · {hours}h`). Columns come from the board's custom
+  workflow, never a fixed status list.
+- **Task cards:** rich white cards — ticket key, title, priority,
+  estimate, assignee avatar and time logged — built from the same
+  `Card` primitive, 12px inner radius, hairline `#E5E7EB` border.
+  Selected card: vivid purple `#6C5CE7` border on an accent-light fill.
+- **APPS rail group:** the icon rail carries an APPS group for the
+  connected integrations (Slack, GitHub, Notion, Google), below the
+  main nav and above Workflows / Roles / Admin.
+- **Interaction:** drag-to-move (dnd-kit — the dashboard does NOT
+  use it, the board does) PATCHes the ticket's status; a keyboard
+  move-to-column menu is the alternative. Unplaced tickets (no
+  column yet) sit in their own non-droppable column; clicking a
+  ticket opens its detail panel below the board.
+
+Status note: the board page already implements the colour-dot column
+headers with counts and the key / title / priority / estimate card.
+The breadcrumb + member-stack + Invite project header, hours in the
+column headers, and the APPS rail group are the remaining board-slice
+work — they are the design target above, not yet in the code.
+
+### 1B. Customisable Dashboard + UI (locked 2026-11-17, decision 20; layout editing superseded 2026-11-19, decision 24)
 
 **Phase 1, with the Executive Dashboard.** Customisation is what makes
 the dashboard feel like _my_ dashboard — and it is per **user**, not
 per workspace. The company's workflow (boards, statuses, reporting
 categories) stays shared; the view is personal.
 
-**Dashboard builder — every card is a widget.** The widget registry
-holds one component per widget type, all built from the shared
-primitives in §1A (so a custom dashboard still looks like Agilytics):
+**Dashboard — fixed layout, visibility only.** The grid is a
+FIXED structure: 4 KPI cards in one row, then wide (8) + narrow (4)
+rows (Velocity + Today feed, Blockers + Workload, At-risk + My Work,
+AI brief full width). There is NO drag-to-swap, NO resize, NO drag
+handles, NO layout editing — that part of decision 20 is superseded
+by decision 24. What the user CAN customise is **what they see**: a
+"Customise" panel with one checkbox/toggle per widget (KPI, velocity,
+workload, Today feed, blockers, at-risk, My Work, AI brief) to
+add/remove it. The saved widget list IS the visible set, stored per
+user via the existing `PUT /dashboard/layout` (no API contract
+change). Each widget's content is still configurable in a widget
+config panel: which stats it shows, which project / sprint / team it
+pulls from, and its time range. A widget with no data for its scope
+renders an empty state, never another widget's data.
+
+**Widget registry.** One component per widget type, all built from the
+shared primitives in §1A (so the dashboard still looks like
+Agilytics):
 
 | Widget         | Content it shows                                                                    |
 | -------------- | ----------------------------------------------------------------------------------- |
@@ -182,51 +223,44 @@ primitives in §1A (so a custom dashboard still looks like Agilytics):
 | My Work        | Assigned to me, due today/overdue, blocked, mentioned                               |
 | AI brief       | Daily brief / risk list (Phase 3 data, widget ships in Phase 1 with the brief slot) |
 
-Per user, on a grid: **add** a widget from the registry, **remove**
-one, **drag to rearrange**, **resize width/height** (grid units).
-Each widget's content is configurable in a **widget config panel**:
-which stats it shows, which project / sprint / team it pulls from,
-and its time range. A widget with no data for its scope renders an
-empty state, never another widget's data.
-
-**Saved layouts, per user.** Layouts are saved to the API
+**Saved visibility, per user.** Visibility is saved to the API
 (`DashboardLayout`, see `SYSTEM-DESIGN.md` §4) and **auto-saved** on
 every change (debounced), **synced across devices** on login, and
 **reset to default in one click** (`POST /dashboard/layout/reset`).
 **Role templates** seed a new user's first layout — Manager, Lead,
-Developer, Viewer — each a preset arrangement of the same widgets;
-after that the layout is the user's own. A user may keep several
-named layouts and switch between them.
+Developer, Viewer — each a preset widget set; after that the visible
+set is the user's own.
 
 **UI customisation (same rule: per user, not per workspace).**
-Density (**comfortable / compact**), sidebar **collapsed / expanded**,
-and **which nav items are shown** (hide a section you never use;
-workspace admins cannot force a nav item on a user, and hiding a nav
-item never hides the data — the route still exists). UI preferences
-travel with the layout record (the `ui` block in the layout JSON) so
-they sync across devices too, and they live in Zustand only as a
-cache of the server record — never as the source of truth.
+Density (**comfortable / compact**) and **which nav items are shown**
+(hide a section you never use; hiding a nav item never hides the
+data — the route still exists). UI preferences travel with the layout
+record (the `ui` block in the layout JSON) so they sync across
+devices too, and they live in Zustand only as a cache of the server
+record — never as the source of truth.
 
-**What customisation is NOT.** The Agibankz theme stays the system.
+**What customisation is NOT.** The Kanban theme stays the system.
 Users do **not** pick colours, skins, fonts or themes — customisation
-is _what you see and where_, not re-skinning. The tokens in §1A are
-not user-configurable.
+is _what you see_, not re-skinning. The tokens in §1A are not
+user-configurable.
 
 **The reporting engine underneath never changes.** Widgets read the
 same reporting aggregates (`GET /reporting/dashboard-summary` and the
 widget's scoped query) that the fixed dashboard and the generated
 weekly reports read. A custom dashboard can therefore never break a
-report: it rearranges and filters the presentation, it never changes
-a definition, a category, or a number. If a widget's scope is deleted
-(e.g. a project is archived), the widget falls back to an empty state
-with a "re-pick scope" action.
+report: it filters the presentation, it never changes a definition, a
+category, or a number. If a widget's scope is deleted (e.g. a project
+is archived), the widget falls back to an empty state with a
+"re-pick scope" action.
 
 **Implementation:** widget registry in `features/dashboard/widgets/`
-(one file per widget, registered by type); drag/resize grid on
-`dnd-kit` (already pinned); layout state in TanStack Query keyed
-`["dashboard-layout", tenantId, userId]` with optimistic updates and
-a debounced `PUT /dashboard/layout`; config panel as a side sheet,
-not a modal, so the user sees the widget change live.
+(one file per widget, registered by type); fixed grid in
+`DashboardGrid.tsx` (no dnd-kit on the dashboard — dnd-kit stays as
+a dependency because TicketBoard uses it); visibility state in
+TanStack Query keyed `["dashboard-layout", tenantId, userId]` with
+optimistic updates and a debounced `PUT /dashboard/layout`; config
+panel as a side sheet, not a modal, so the user sees the widget
+change live.
 
 ### 1C. Custom Roles & Permissions UI (locked 2026-11-17, decision 21)
 
@@ -251,6 +285,28 @@ the page reads the caller's effective permissions from
 `GET /identity/me` and hides actions the user lacks, but the API
 guard is the enforcement point — a user who cannot see the page
 cannot call its endpoints either.
+
+### 1D. Reports — Pin 3 DealDeck (locked 2026-11-19, decision 23; confirmed by decision 25)
+
+Source: DealDeck Sales Report pin,
+`https://au.pinterest.com/pin/1090011916101914285/`. Reports only.
+
+- **Page bg** pale lavender-grey `#E9EBF3`; cards white, 20px radius,
+  1px `#E5E7EB` border, very soft shadow.
+- **Accent** royal blue `#3B5BFF` — filled KPI card, bars, donut
+  rings. Other accents follow §1A (green `#22C55E` on `#DCFCE7`,
+  red `#EF4444` on `#FEE2E2`, grey series `#CBD5E1`).
+- **2×2 KPI block:** ONE filled royal-blue card (white text) + 3
+  white cards; each with a tinted icon square top-left and a
+  green/red delta pill top-right. KPIs are PM content: tickets done /
+  velocity / members active / overdue.
+- **Charts:** multi-ring donut (tickets by status, centre total +
+  legend below the chart) and a grouped vertical bar chart
+  (velocity per sprint: done vs planned, grey vs blue series).
+- **Type:** section titles 15–17px bold with 11–12px grey subtitles.
+- The pin's own sales content is never shown — every section is
+  adapted to PM content (projects, sprints, tickets, members, daily
+  updates, time).
 
 ## 2. Routing — TanStack Router
 
@@ -368,8 +424,15 @@ by file.
 
 - File-based routes + lazy chunks (§2), `features/` + `services/`
   migration (§5–§6).
-- Customisable dashboard (§1B) — widget registry, drag/resize grid,
-  per-user layouts — Phase 1, with the Executive Dashboard.
 - Virtualised lists, memoised chart pass, full a11y audit.
-- WebSocket realtime (Phase 2 — see `docs/REALTIME.md`).
 - Playwright e2e (installed, browsers not downloaded in this sandbox).
+- Board cards do not show checklists, file counts, or tag pills:
+  the API has no checklist / attachment / label fields on tickets,
+  so cards show only real fields (title, priority, assignee,
+  estimate, due date, status). Adding them needs an API/schema
+  addition, not a frontend restyle.
+- Team chat (decision 26) and the AI agent UI beyond the AI brief
+  slot (Phase 3).
+- The theme toggle only darkens the page backdrop; a full dark
+  theme is not safe yet (many surfaces use literal `bg-white` with
+  token text colours).

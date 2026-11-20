@@ -7,8 +7,9 @@ import { Field, Input } from "../components/ui";
 import { apiUrl } from "../lib/query-client";
 
 /**
- * Login page — Agibankz (decision 19): canvas background, centred white
- * card, lime accents, forest-green primary button.
+ * Login page — Kanban main design (2026-11-20): #E9EEF5 page background,
+ * centred white card, vivid purple #6C5CE7 primary button and selected
+ * user state.
  *
  * DEV ONLY until Cognito lands: there is no password. Pick one of the six
  * demo users (or type its email) and the page calls the API's DEV-ONLY
@@ -115,9 +116,12 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas p-4">
-      <div className="w-full max-w-md rounded-[22px] border border-line bg-panel p-6 sm:p-8">
+    <div className="flex min-h-screen items-center justify-center bg-page p-4">
+      <div className="w-full max-w-md rounded-card border border-line bg-card p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04)] sm:p-8">
         <div className="mb-6">
+          <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-[10px] bg-accent text-base font-bold text-white">
+            A
+          </span>
           <p className="text-xl font-bold tracking-tight text-ink">Agilytics OS</p>
           <p className="mt-1 text-sm text-muted">AI-powered team OS</p>
         </div>
@@ -131,7 +135,7 @@ export function LoginPage() {
               placeholder="demo@agilytics.local"
               value={email}
               onChange={(e) => onEmailChange(e.target.value)}
-              className="w-full bg-canvas"
+              className="w-full bg-page"
             />
           </Field>
 
@@ -148,11 +152,11 @@ export function LoginPage() {
                     aria-pressed={selected}
                     className={`flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition-colors ${
                       selected
-                        ? "border-forest bg-lime-light/40"
-                        : "border-line bg-panel hover:bg-canvas"
+                        ? "border-accent bg-accent-light"
+                        : "border-line bg-card hover:bg-page"
                     }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lime-light text-xs font-bold text-forest">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-light text-xs font-bold text-accent">
                       {initialsFor(user.name)}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -171,7 +175,7 @@ export function LoginPage() {
           </fieldset>
 
           {error ? (
-            <p role="alert" className="rounded-[14px] border border-risk/40 bg-[#fff5f5] px-3 py-2 text-sm text-risk">
+            <p role="alert" className="rounded-[12px] border border-risk/40 bg-risk-light px-3 py-2 text-sm text-risk">
               {error}
             </p>
           ) : null}
@@ -179,7 +183,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-full bg-forest py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-[10px] bg-accent py-2.5 text-sm font-semibold text-white transition-opacity hover:bg-accent/90 disabled:opacity-50"
           >
             {submitting ? "Signing in…" : "Sign in"}
           </button>

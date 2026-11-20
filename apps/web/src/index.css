@@ -1,73 +1,66 @@
 @import "tailwindcss";
 
 /*
- * Agilytics OS design tokens — Agibankz (locked 2026-11-17, decision 19).
- * Source: Agibankz Web Banking Dashboard pin by Delibix
- * (https://www.pinterest.com/pin/834151162281618403/).
- * Fresh, playful, airy, rounded-everything, lime pop on white.
- * Hex values are close visual estimates from the flat pin image (~).
+ * Agilytics OS design tokens — Kanban main design
+ * ("Creating an application for aero.com", locked 2026-11-20).
+ * Light blue-grey page, white cards, vivid purple primary, green
+ * "New" pill. No gradients, no glass, no dark surfaces.
  *
- * CORRECTION: there is NO dark hero card in this pin. The hero is a
- * white card (57%) + bright lime card (43%) split. Never build a dark
- * hero card. Deep forest green is the primary action colour ONLY —
- * primary buttons, PRIORITY-style pills, % badges — never a page
- * background. No gradients, no glass, no dark surfaces; flat, almost
- * no shadows. Status colours are used only for meaning, never as
- * decoration; trends always carry an explicit + / − sign.
+ * TOKEN NAMES (use these everywhere — no literal hex in components
+ * except where a token is genuinely ambiguous):
+ *   bg-page   #E9EEF5  page background
+ *   bg-card   #FFFFFF  cards / panels / TopBar / rail
+ *   bg-pill   #F2F3F7  muted pill / chip fill
+ *   ink       #111827  text
+ *   muted     #6B7280  secondary text
+ *   accent    #6C5CE7  vivid purple — primary actions, active nav,
+ *                       In Progress pill, focus
+ *   accent-light #EFEAFE  purple light fill (selected rows, avatars)
+ *   done      #22C55E / done-light #DCFCE7 / done-strong #16A34A
+ *   risk      #EF4444 / risk-light #FEE2E2
+ *   warn      #F59E0B / warn-light #FEF3C7
+ *   line      #E5E7EB  hairline borders
+ * Typography: Inter; page heading 20-24px bold 700; section titles
+ * 14-16px semibold; KPI labels 11-12px grey; KPI numbers 20-24px bold;
+ * body/table 12-13px; status pills 11-12px.
+ * Radii: cards 18px; inner blocks 12px; pills 999px; buttons 10px.
+ * Cards: white, flat, very soft shadow + 1px border.
  */
 @theme {
-  --color-canvas: #f4f4f2;
-  --color-shell: #e8e8e8;
-  --color-panel: #ffffff;
-  --color-line: #e5e7e5;
-  --color-track: #e3e6e3;
-  --color-pill: #f0f0ee;
-  --color-ink: #111211;
-  --color-muted: #8a8f8a;
-  --color-label: #7a7f7a;
-  --color-nav-inactive: #9aa09a;
+  --color-page: #e9eef5;
+  --color-card: #ffffff;
+  --color-pill: #f2f3f7;
+  --color-line: #e5e7eb;
+  --color-track: #e5e7eb;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-label: #6b7280;
+  --color-nav-inactive: #94a3b8;
 
-  --color-lime: #a9e85c;
-  --color-lime-light: #c0ee7e;
-  --color-lime-deep: #a3e635;
-  --color-forest: #0f3d20;
+  --color-accent: #6c5ce7;
+  --color-accent-light: #efeafe;
 
-  --color-done: #1fa463;
-  --color-progress: #a3e635;
-  --color-risk: #e5484d;
-  --color-warn: #ff6a2b;
-  --color-orange: #ff6a2b;
-  --color-dot: #ff3b30;
+  --color-done: #22c55e;
+  --color-done-strong: #16a34a;
+  --color-done-light: #dcfce7;
+  --color-progress: #6c5ce7;
+  --color-risk: #ef4444;
+  --color-risk-light: #fee2e2;
+  --color-warn: #f59e0b;
+  --color-warn-light: #fef3c7;
+  --color-orange: #f59e0b;
+  --color-dot: #ef4444;
 
   --font-sans: "Inter", "Plus Jakarta Sans", "Poppins", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-shell: 26px;
-  --radius-card: 22px;
-  --radius-inner: 14px;
+  --radius-shell: 20px;
+  --radius-card: 18px;
+  --radius-inner: 12px;
   --radius-pill: 999px;
 }
 
-/*
- * Deprecated compatibility aliases — DO NOT use in new code.
- * The pre-Agibankz theme (dark navy sidebar, deep-blue primary) was
- * superseded by decision 19. These aliases map the old token names
- * onto Agibankz values so components not yet migrated (Sidebar /
- * TopBar in components/layout.tsx, Button in components/ui.tsx) keep
- * rendering instead of going unstyled. Remove them once those files
- * are migrated to the tokens above.
- */
-@theme {
-  --color-navy-950: #0f3d20;
-  --color-navy-900: #0f3d20;
-  --color-navy-800: #123f22;
-  --color-navy-700: #1a5230;
-  --color-primary-600: #0f3d20;
-  --color-primary-500: #1fa463;
-  --color-primary-100: #c0ee7e;
-}
-
 body {
-  background: var(--color-canvas);
+  background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -75,8 +68,24 @@ body {
 }
 
 ::selection {
-  background: var(--color-lime);
-  color: var(--color-forest);
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+/*
+ * Theme toggle (rail): light is the default. Dark is a backdrop-only
+ * theme by design — only the page backdrop darkens; cards, inputs and
+ * text stay on the light tokens, so every surface (including literal
+ * bg-white in other slices) stays readable. A full dark theme needs
+ * those literal whites migrated to tokens first. The toggle in
+ * components/layout.tsx sets data-theme on <html> and persists it;
+ * main.tsx re-applies the saved value before first paint.
+ */
+:root[data-theme="dark"] body {
+  background: #0f172a;
+}
+:root[data-theme="dark"] .theme-shell {
+  background: #0f172a;
 }
 
 /*
@@ -86,8 +95,8 @@ body {
  * the shape; these rules own the browser internals they cannot reach.
  */
 
-/* Never the harsh native blue outline — focus is the soft forest
- * glow ring on the primitives (focus:ring-4 focus:ring-forest/10). */
+/* Never the harsh native blue outline — focus is the soft purple
+ * accent glow ring on the primitives (focus:ring-4 focus:ring-accent/10). */
 input,
 select,
 textarea {
@@ -133,11 +142,11 @@ input[type="color"]::-moz-color-swatch {
  * ink text, no grey system background. */
 select option {
   background-color: #ffffff;
-  color: #111211;
+  color: #111827;
 }
 
-/* Custom checkbox: rounded square, hairline border, forest fill +
- * white tick when checked, soft forest focus ring. */
+/* Custom checkbox: rounded square, hairline border, purple accent
+ * fill + white tick when checked, soft purple focus ring. */
 input[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
@@ -146,7 +155,7 @@ input[type="checkbox"] {
   flex-shrink: 0;
   cursor: pointer;
   border-radius: 6px;
-  border: 1.5px solid #d6d9d6;
+  border: 1.5px solid #d1d5db;
   background-color: #ffffff;
   background-position: center;
   background-repeat: no-repeat;
@@ -156,22 +165,22 @@ input[type="checkbox"] {
     box-shadow 0.2s;
 }
 input[type="checkbox"]:hover {
-  border-color: #c9cdc9;
+  border-color: #9ca3af;
 }
 input[type="checkbox"]:checked {
-  border-color: #0f3d20;
-  background-color: #0f3d20;
+  border-color: #6c5ce7;
+  background-color: #6c5ce7;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M4 12.5l5 5L20 6.5'/></svg>");
 }
 input[type="checkbox"]:focus-visible {
-  box-shadow: 0 0 0 4px rgba(15, 61, 32, 0.12);
+  box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.15);
 }
 
-/* Autofill: never the yellow system fill — keep the warm white. */
+/* Autofill: never the yellow system fill — keep the white card. */
 input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px #fdfdfa inset;
-  -webkit-text-fill-color: #111211;
-  caret-color: #111211;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
 }
 
 /* Hero numbers: 52–56px, weight 500–600, tight tracking, tabular figures. */
@@ -183,11 +192,10 @@ input:-webkit-autofill {
   line-height: 1.05;
 }
 
-/* Smaller hero-style number for KPI widgets: big, but sized to fit a
- * single grid row once rows grow to content (see DashboardGrid). */
+/* KPI numbers (Kanban): 20–24px, bold, tight tracking, tabular figures. */
 .widget-number {
-  font-size: 36px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;

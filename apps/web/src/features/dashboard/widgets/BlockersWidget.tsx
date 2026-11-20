@@ -17,7 +17,7 @@ export function BlockersWidget({ summary, config, onClearScope }: WidgetProps) {
     <div className="space-y-3 p-5 text-sm">
       {today.openBlockers > 0 && (
         <p className="flex items-center gap-2">
-          <span className="inline-flex rounded-full bg-forest px-2.5 py-0.5 text-xs font-medium text-white">
+          <span className="inline-flex rounded-full bg-[#6C5CE7] px-2.5 py-0.5 text-xs font-medium text-white">
             {today.openBlockers} open blocker{today.openBlockers === 1 ? "" : "s"}
           </span>
           <span className="text-muted">reported in today&apos;s daily updates.</span>
@@ -30,7 +30,7 @@ export function BlockersWidget({ summary, config, onClearScope }: WidgetProps) {
             {today.staleTickets.map((t) => (
               <li key={t.id} className="rounded-inner bg-pill px-3 py-2 text-muted">
                 {t.title} —{" "}
-                <span className="tabular-nums text-warn">{t.daysStale} days stale</span>
+                <span className="tabular-nums text-amber-600">{t.daysStale} days stale</span>
               </li>
             ))}
           </ul>
